@@ -4,7 +4,11 @@ export default {
 	content: ['./src/**/*.{html,js,svelte,ts}'],
 
 	theme: {
-		extend: {}
+		extend: {
+			colors: {
+				'medium-carmine': '#B33935'
+			}
+		}
 	},
 
 	plugins: []
