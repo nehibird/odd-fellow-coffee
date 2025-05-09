@@ -28,7 +28,7 @@
 	];
 </script>
 
-<section class="white-overlay-right relative mx-auto px-8 py-6 md:px-10 lg:px-16">
+<section class="white-overlay-right relative mx-auto px-8 pb-10 md:px-10 lg:px-16">
 	<h3 class="w-full pb-6 text-left text-4xl capitalize md:pb-10">
 		Expore <span class="mt-2 block font-semibold text-medium-carmine">our gallery</span>
 	</h3>
@@ -49,6 +49,17 @@
 								: 'col-span-1'} object-cover md:h-full md:w-full"
 			/>
 		{/each}
+	</div>
+
+	<div class="md:px-16 md:py-16">
+		<h4 class="text-center text-4xl font-light">Get Started</h4>
+
+		<p class="pt-10 text-center">
+			We’re proud to be part of Oklahoma’s growing community of makers, growers, and neighbors who
+			value quality over convenience. Odd Fellow isn’t just about what we make—it’s about who we
+			make it for. Whether you’re down the road or across the state, we’re honored to share a little
+			bit of our home with yours
+		</p>
 	</div>
 </section>
 
