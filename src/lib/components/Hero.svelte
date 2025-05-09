@@ -17,7 +17,7 @@
 				<li class="pt-6">Freshly roasted coffee beans</li>
 			</ul>
 			<div
-				class="relative mx-4 w-[120px] rounded-full bg-black px-5 py-3 text-white duration-200 ease-in-out hover:bg-medium-carmine"
+				class="relative mx-4 hidden w-[120px] rounded-full bg-black px-5 py-3 text-white duration-200 ease-in-out hover:bg-medium-carmine md:block"
 			>
 				<a href="" class="block text-sm">Explore</a>
 				<div
@@ -31,7 +31,7 @@
 		>
 			<div class="h-80 w-28 self-end rounded-full md:h-full md:w-36">
 				<img
-					src="/assets/images/banner-3.jpg"
+					src="/assets/images/hero/banner-3.jpg"
 					alt="banner 1"
 					class="h-full w-full rounded-full object-cover"
 				/>
@@ -40,7 +40,7 @@
 				class="relative h-80 w-28 -translate-y-12 transform rounded-full duration-500 ease-in-out hover:translate-y-12 md:h-full md:w-36"
 			>
 				<img
-					src="/assets/images/banner-1.jpg"
+					src="/assets/images/hero/banner-1.jpg"
 					alt="banner 1"
 					class="h-full w-full rounded-full object-cover"
 				/>
@@ -60,7 +60,7 @@
 			</div>
 			<div class="h-80 w-28 self-end rounded-full md:h-full md:w-36">
 				<img
-					src="/assets/images/banner-2.jpg"
+					src="/assets/images/hero/banner-2.jpg"
 					alt="banner 1"
 					class="h-full w-full rounded-full object-cover"
 				/>
@@ -70,7 +70,7 @@
 
 		<!-- social icons -->
 		<ul
-			class="relative mt-10 flex items-center justify-end gap-5 py-8 md:absolute md:right-0 md:top-1/2 md:flex md:-translate-y-1/2 md:flex-col md:gap-2 md:rounded-l-2xl md:bg-white md:px-1.5 md:py-3 md:shadow-2xl md:shadow-black"
+			class="relative mt-3 flex items-center justify-end gap-5 md:absolute md:right-0 md:top-1/2 md:flex md:-translate-y-1/2 md:flex-col md:gap-2 md:rounded-l-2xl md:bg-white md:px-1.5 md:py-3 md:shadow-2xl md:shadow-black"
 		>
 			{#each socialLinks as { href, src, alt }}
 				<li>
