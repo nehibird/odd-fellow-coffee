@@ -48,16 +48,16 @@
 		<div class="pt-8 md:pt-0">
 			<h5 class="red-underline text-xl text-white">Page Links</h5>
 			<ul class="flex list-disc flex-col gap-2 pl-4 pt-6 text-sm text-white/70">
-				<li class="capitalize">home</li>
+				<!-- <li class="capitalize">home</li>
 				<li class="capitalize">gallery</li>
-				<li class="capitalize">contact us</li>
+				<li class="capitalize">contact us</li> -->
 				<li class="text-nowrap capitalize"><a href="">Terms & Conditions</a></li>
 				<li class="text-nowrap capitalize"><a href="">Privacy Policy</a></li>
 				<li class="text-nowrap capitalize"><a href="">Cookies</a></li>
 			</ul>
 		</div>
 	</div>
-	<p class="text-nowrap py-6 text-center text-sm text-white">
+	<p class="text-nowrap py-6 text-center text-xs text-white">
 		© 2025 Odd Fellow Coffee Roasters. <span class="block md:inline">All rights reserved.</span>
 	</p>
 </section>
