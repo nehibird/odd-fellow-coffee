@@ -11,7 +11,9 @@
 			<h1 class=" py-8 text-4xl capitalize md:py-0 lg:text-5xl">
 				odd fellow <span class="mt-2 block font-semibold text-medium-carmine">coffee roasters</span>
 			</h1>
-			<h2 class="py-8 text-sm font-bold lg:text-base">Beans for the brew and bread for the soul</h2>
+			<h2 class="pb-8 text-sm font-bold md:pt-8 lg:text-base">
+				Beans for the brew and bread for the soul
+			</h2>
 			<ul class="list-inside list-disc pb-10 text-sm font-normal lg:text-base">
 				<li>Freshly prepared homemmade sourdough bread</li>
 				<li class="pt-6">Freshly roasted coffee beans</li>

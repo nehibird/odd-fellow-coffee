@@ -26,7 +26,7 @@
 	];
 </script>
 
-<section class="mx-auto max-w-screen-xl">
+<section class="sticky top-0 z-10 mx-auto max-w-screen-xl bg-white md:relative">
 	<div
 		class="flex items-center justify-between bg-white px-4 py-2 shadow-md md:px-10 md:shadow-none lg:px-16"
 	>

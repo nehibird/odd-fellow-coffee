@@ -68,6 +68,6 @@
 	}
 	.red-underline::after {
 		content: '';
-		@apply absolute left-0 top-9 z-10 h-1 w-10 rounded-full bg-medium-carmine;
+		@apply absolute left-0 top-9 h-1 w-10 rounded-full bg-medium-carmine;
 	}
 </style>
