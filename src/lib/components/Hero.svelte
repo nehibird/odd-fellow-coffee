@@ -11,13 +11,15 @@
 			<h1 class=" py-8 text-4xl capitalize md:py-0 lg:text-5xl">
 				odd fellow <span class="mt-2 block font-semibold text-medium-carmine">coffee roasters</span>
 			</h1>
-			<h2 class="py-8 text-sm font-bold lg:text-base">Beans for the brew and bread for the soul</h2>
+			<h2 class="pb-8 text-sm font-bold md:pt-8 lg:text-base">
+				Beans for the brew and bread for the soul
+			</h2>
 			<ul class="list-inside list-disc pb-10 text-sm font-normal lg:text-base">
 				<li>Freshly prepared homemmade sourdough bread</li>
 				<li class="pt-6">Freshly roasted coffee beans</li>
 			</ul>
 			<div
-				class="relative mx-4 w-[120px] rounded-full bg-black px-5 py-3 text-white duration-200 ease-in-out hover:bg-medium-carmine"
+				class="relative mx-4 hidden w-[120px] rounded-full bg-black px-5 py-3 text-white duration-200 ease-in-out hover:bg-medium-carmine md:block"
 			>
 				<a href="" class="block text-sm">Explore</a>
 				<div
@@ -70,7 +72,7 @@
 
 		<!-- social icons -->
 		<ul
-			class="relative mt-10 flex items-center justify-end gap-5 py-8 md:absolute md:right-0 md:top-1/2 md:flex md:-translate-y-1/2 md:flex-col md:gap-2 md:rounded-l-2xl md:bg-white md:px-1.5 md:py-3 md:shadow-2xl md:shadow-black"
+			class="relative mt-3 flex items-center justify-end gap-5 md:absolute md:right-0 md:top-1/2 md:flex md:-translate-y-1/2 md:flex-col md:gap-2 md:rounded-l-2xl md:bg-white md:px-1.5 md:py-3 md:shadow-2xl md:shadow-black"
 		>
 			{#each socialLinks as { href, src, alt }}
 				<li>

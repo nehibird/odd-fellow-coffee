@@ -1,8 +1,10 @@
 <script lang="ts">
 </script>
 
-<section class="mx-auto max-w-screen-lg px-8 md:px-10 md:py-10 lg:px-16">
-	<h3 class="w-full pb-6 text-left text-4xl capitalize md:pb-10">about</h3>
+<section class="mx-auto max-w-screen-xl px-8 py-6 md:px-10 md:py-10 lg:px-16">
+	<h3 class="w-full pb-6 text-left text-4xl capitalize md:pb-10">
+		<span class="text-medium-carmine">a</span>bout
+	</h3>
 
 	<div class="grid grid-cols-1 gap-y-10 md:grid-cols-3">
 		<div class="order-1 hidden md:col-span-2 md:block">

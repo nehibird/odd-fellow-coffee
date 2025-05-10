@@ -26,7 +26,7 @@
 	];
 </script>
 
-<section class="mx-auto max-w-screen-xl">
+<section class="sticky top-0 z-10 mx-auto max-w-screen-xl bg-white md:relative">
 	<div
 		class="flex items-center justify-between bg-white px-4 py-2 shadow-md md:px-10 md:shadow-none lg:px-16"
 	>
@@ -53,11 +53,11 @@
 		<ul
 			class=" hidden items-center gap-20 rounded-2xl bg-black/5 px-10 py-4 text-sm capitalize md:flex"
 		>
-			<li class="duration-300 ease-in-out hover:bg-medium-carmine hover:text-white">
-				<a href="" class="block">about</a>
+			<li class="duration-300 ease-in-out hover:font-semibold">
+				<a href="" class="block h-full">about</a>
 			</li>
 			<li>
-				<a href="">gallery</a>
+				<a href="" class="duration-300 ease-in-out hover:font-semibold">gallery</a>
 			</li>
 		</ul>
 		<div
