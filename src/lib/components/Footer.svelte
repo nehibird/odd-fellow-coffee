@@ -5,8 +5,8 @@
 	];
 
 	const socialLinks = [
-		{ href: '', src: '/assets/icons/facebook-white.svg', alt: 'facebook' },
-		{ href: '', src: '/assets/icons/instagram-white.svg', alt: 'instagram' }
+		{ href: '#', src: '/assets/icons/facebook-white.svg', alt: 'facebook' },
+		{ href: '#', src: '/assets/icons/instagram-white.svg', alt: 'instagram' }
 	];
 </script>
 
@@ -51,14 +51,14 @@
 				<!-- <li class="capitalize">home</li>
 				<li class="capitalize">gallery</li>
 				<li class="capitalize">contact us</li> -->
-				<li class="text-nowrap capitalize"><a href="">Terms & Conditions</a></li>
-				<li class="text-nowrap capitalize"><a href="">Privacy Policy</a></li>
-				<li class="text-nowrap capitalize"><a href="">Cookies</a></li>
+				<li class="text-nowrap capitalize"><a href="/terms">Terms & Conditions</a></li>
+				<li class="text-nowrap capitalize"><a href="/privacy">Privacy Policy</a></li>
+				<li class="text-nowrap capitalize"><a href="/cookies">Cookies</a></li>
 			</ul>
 		</div>
 	</div>
 	<p class="text-nowrap py-6 text-center text-xs text-white">
-		© 2025 Odd Fellow Coffee Roasters. <span class="block md:inline">All rights reserved.</span>
+		© 2026 Odd Fellow Coffee Roasters. <span class="block md:inline">All rights reserved.</span>
 	</p>
 </section>
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	const socialLinks = [
-		{ href: '', src: '/assets/icons/facebook.svg', alt: 'facebook' },
-		{ href: '', src: '/assets/icons/instagram.svg', alt: 'instagram' }
+		{ href: '#', src: '/assets/icons/facebook.svg', alt: 'facebook' },
+		{ href: '#', src: '/assets/icons/instagram.svg', alt: 'instagram' }
 	];
 </script>
 
@@ -21,7 +21,7 @@
 			<div
 				class="relative mx-4 hidden w-[120px] rounded-full bg-black px-5 py-3 text-white duration-200 ease-in-out hover:bg-medium-carmine md:block"
 			>
-				<a href="" class="block text-sm">Explore</a>
+				<a href="/shop" class="block text-sm">Explore</a>
 				<div
 					class="absolute right-1.5 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-white"
 				></div>

@@ -1,4 +1,7 @@
-node_modules/
-.env
+node_modules
+build
+.svelte-kit
 data/
 *.db
+.env
+.env.backup

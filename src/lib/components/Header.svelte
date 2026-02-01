@@ -2,6 +2,7 @@
 	import { fly } from 'svelte/transition';
 	import { browser } from '$app/environment';
 	import Logo from './icons/logo.svelte';
+	import { cart } from './CartStore';
 
 	let isMenuOpen: boolean = false;
 	const toggleMenu = () => {
@@ -9,6 +10,8 @@
 	};
 
 	let windowWidth: number = 0;
+	let cartCount = 0;
+	cart.subscribe((items) => { cartCount = items.reduce((s, i) => s + i.quantity, 0); });
 
 	$: if (browser) {
 		windowWidth = window.innerWidth;
@@ -19,8 +22,8 @@
 		}
 	}
 	const socialLinks = [
-		{ href: '', src: '/assets/icons/facebook.svg', alt: 'facebook' },
-		{ href: '', src: '/assets/icons/instagram.svg', alt: 'instagram' }
+		{ href: '#', src: '/assets/icons/facebook.svg', alt: 'facebook' },
+		{ href: '#', src: '/assets/icons/instagram.svg', alt: 'instagram' }
 	];
 </script>
 
@@ -28,7 +31,7 @@
 	<div
 		class="mx-auto flex max-w-screen-xl items-center justify-between bg-white px-4 py-2 shadow-md md:px-8 md:shadow-none"
 	>
-		<Logo />
+		<a href="/"><Logo /></a>
 		<button
 			class="flex cursor-pointer flex-col justify-start gap-2 border border-none md:hidden"
 			on:click={toggleMenu}
@@ -49,19 +52,28 @@
 			></div>
 		</button>
 		<ul
-			class=" hidden items-center gap-20 rounded-2xl bg-black/5 px-10 py-4 text-sm capitalize md:flex"
+			class="hidden items-center gap-10 rounded-2xl bg-black/5 px-10 py-4 text-sm capitalize md:flex"
 		>
 			<li class="duration-300 ease-in-out hover:font-semibold">
-				<a href="" class="block h-full">about</a>
+				<a href="/#about" class="block h-full">about</a>
 			</li>
 			<li>
-				<a href="" class="duration-300 ease-in-out hover:font-semibold">gallery</a>
+				<a href="/shop" class="duration-300 ease-in-out hover:font-semibold">shop</a>
+			</li>
+			<li>
+				<a href="/reservations" class="duration-300 ease-in-out hover:font-semibold">reservations</a>
+			</li>
+			<li class="relative">
+				<a href="/cart" class="duration-300 ease-in-out hover:font-semibold">cart</a>
+				{#if cartCount > 0}
+					<span class="absolute -right-4 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-medium-carmine text-xs text-white">{cartCount}</span>
+				{/if}
 			</li>
 		</ul>
 		<div
 			class="hidden rounded-full bg-black px-6 py-1.5 font-normal capitalize text-white md:block"
 		>
-			<a href="">contact</a>
+			<a href="/#contact">contact</a>
 		</div>
 	</div>
 	{#if isMenuOpen}
@@ -76,13 +88,21 @@
 				class="flex flex-col gap-8 px-8 py-0 text-xl font-normal capitalize text-black md:items-center"
 			>
 				<li>
-					<a href="#" class="block hover:cursor-pointer">about</a>
+					<a href="/#about" class="block hover:cursor-pointer" on:click={() => (isMenuOpen = false)}>about</a>
 				</li>
 				<li>
-					<a href="#" class="block hover:cursor-pointer">gallery</a>
+					<a href="/shop" class="block hover:cursor-pointer" on:click={() => (isMenuOpen = false)}>shop</a>
 				</li>
-				<li class="">
-					<a href="#" class="block hover:cursor-pointer">contact</a>
+				<li>
+					<a href="/reservations" class="block hover:cursor-pointer" on:click={() => (isMenuOpen = false)}>reservations</a>
+				</li>
+				<li>
+					<a href="/cart" class="block hover:cursor-pointer" on:click={() => (isMenuOpen = false)}>
+						cart {#if cartCount > 0}<span class="text-medium-carmine">({cartCount})</span>{/if}
+					</a>
+				</li>
+				<li>
+					<a href="/#contact" class="block hover:cursor-pointer" on:click={() => (isMenuOpen = false)}>contact</a>
 				</li>
 			</ul>
 			<ul class="flex items-center gap-5 px-8 pt-10">
