@@ -1,9 +1,10 @@
-import { ADMIN_PASSWORD } from '$env/static/private';
+import { ADMIN_PASSWORD, SITE_URL } from '$env/static/private';
 import type { Cookies } from '@sveltejs/kit';
 import { randomBytes } from 'crypto';
 
 const SESSION_NAME = 'ofc_admin_session';
 const sessions = new Set<string>();
+const isSecure = SITE_URL?.startsWith('https');
 
 export function login(password: string, cookies: Cookies): boolean {
 	if (password !== ADMIN_PASSWORD) return false;
@@ -12,7 +13,8 @@ export function login(password: string, cookies: Cookies): boolean {
 	cookies.set(SESSION_NAME, token, {
 		path: '/',
 		httpOnly: true,
-		sameSite: 'strict',
+		sameSite: 'lax',
+		secure: isSecure,
 		maxAge: 60 * 60 * 8 // 8 hours
 	});
 	return true;
