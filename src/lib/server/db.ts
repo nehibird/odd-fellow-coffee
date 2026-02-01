@@ -96,18 +96,18 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 
 const SEED = `
 INSERT INTO products (name, category, description, price_cents, variants, subscribable, image) VALUES
-('House Blend', 'coffee', 'Our signature smooth daily roast', 1400, '{"sizes":["8oz","16oz"],"grinds":["whole","medium","fine","espresso"]}', 1, 'coffee-bag.png'),
-('Dark Roast', 'coffee', 'Bold and rich, full body', 1500, '{"sizes":["8oz","16oz"],"grinds":["whole","medium","fine","espresso"]}', 1, 'coffee-bag.png'),
-('Decaf Blend', 'coffee', 'All the flavor, none of the buzz', 1400, '{"sizes":["8oz","16oz"],"grinds":["whole","medium","fine","espresso"]}', 1, 'coffee-bag.png');
+('House Blend', 'coffee', 'Our signature smooth daily roast', 1400, '{"sizes":["8oz","16oz"],"grinds":["whole","medium","fine","espresso"]}', 1, 'coffee-bag.svg'),
+('Dark Roast', 'coffee', 'Bold and rich, full body', 1500, '{"sizes":["8oz","16oz"],"grinds":["whole","medium","fine","espresso"]}', 1, 'coffee-bag.svg'),
+('Decaf Blend', 'coffee', 'All the flavor, none of the buzz', 1400, '{"sizes":["8oz","16oz"],"grinds":["whole","medium","fine","espresso"]}', 1, 'coffee-bag.svg');
 INSERT INTO products (name, category, description, price_cents, image) VALUES
-('Sourdough Loaf', 'bakery', 'Fresh-baked artisan sourdough', 800, 'bread.png'),
-('Cinnamon Roll', 'bakery', 'Warm with cream cheese icing', 450, 'pastry.png'),
-('Banana Bread', 'bakery', 'Homemade, moist and delicious', 700, 'bread.png'),
-('Blueberry Muffin', 'bakery', 'Loaded with fresh blueberries', 400, 'pastry.png');
+('Sourdough Loaf', 'bakery', 'Fresh-baked artisan sourdough', 800, 'bread.svg'),
+('Cinnamon Roll', 'bakery', 'Warm with cream cheese icing', 450, 'pastry.svg'),
+('Banana Bread', 'bakery', 'Homemade, moist and delicious', 700, 'bread.svg'),
+('Blueberry Muffin', 'bakery', 'Loaded with fresh blueberries', 400, 'pastry.svg');
 INSERT INTO products (name, category, description, price_cents, image) VALUES
-('Biscuits & Gravy', 'hotplate', 'Classic Southern comfort breakfast', 900, 'hotplate.png'),
-('Breakfast Burrito', 'hotplate', 'Eggs, cheese, sausage, peppers', 850, 'hotplate.png'),
-('Quiche of the Day', 'hotplate', 'Ask about today''s variety', 750, 'hotplate.png');
+('Biscuits & Gravy', 'hotplate', 'Classic Southern comfort breakfast', 900, 'hotplate.svg'),
+('Breakfast Burrito', 'hotplate', 'Eggs, cheese, sausage, peppers', 850, 'hotplate.svg'),
+('Quiche of the Day', 'hotplate', 'Ask about today''s variety', 750, 'hotplate.svg');
 INSERT INTO time_slots (day_of_week, start_time, end_time, capacity) VALUES
 (1,'07:00','08:00',5),(1,'08:00','09:00',5),(1,'09:00','10:00',5),(1,'10:00','11:00',5),
 (2,'07:00','08:00',5),(2,'08:00','09:00',5),(2,'09:00','10:00',5),(2,'10:00','11:00',5),
