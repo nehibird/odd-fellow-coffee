@@ -61,6 +61,9 @@
 				<a href="/shop" class="duration-300 ease-in-out hover:font-semibold">shop</a>
 			</li>
 			<li>
+				<a href="/drops" class="duration-300 ease-in-out hover:font-semibold">drops</a>
+			</li>
+			<li>
 				<a href="/reservations" class="duration-300 ease-in-out hover:font-semibold">reservations</a>
 			</li>
 			<li class="relative">
@@ -92,6 +95,9 @@
 				</li>
 				<li>
 					<a href="/shop" class="block hover:cursor-pointer" on:click={() => (isMenuOpen = false)}>shop</a>
+				</li>
+				<li>
+					<a href="/drops" class="block hover:cursor-pointer" on:click={() => (isMenuOpen = false)}>drops</a>
 				</li>
 				<li>
 					<a href="/reservations" class="block hover:cursor-pointer" on:click={() => (isMenuOpen = false)}>reservations</a>

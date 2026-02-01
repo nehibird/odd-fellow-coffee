@@ -8,6 +8,8 @@ export interface CartItem {
 	quantity: number;
 	variant?: string;
 	image?: string;
+	dropId?: number;
+	dropItemId?: number;
 }
 
 function createCartStore() {
@@ -22,8 +24,8 @@ function createCartStore() {
 		subscribe,
 		add(item: CartItem) {
 			update((items) => {
-				const key = `${item.productId}-${item.variant || ''}`;
-				const existing = items.find((i) => `${i.productId}-${i.variant || ''}` === key);
+				const key = `${item.productId}-${item.variant || ''}-${item.dropId || ''}`;
+				const existing = items.find((i) => `${i.productId}-${i.variant || ''}-${i.dropId || ''}` === key);
 				if (existing) {
 					existing.quantity += item.quantity;
 				} else {
@@ -33,18 +35,18 @@ function createCartStore() {
 				return [...items];
 			});
 		},
-		remove(productId: number, variant?: string) {
+		remove(productId: number, variant?: string, dropId?: number) {
 			update((items) => {
-				const key = `${productId}-${variant || ''}`;
-				const filtered = items.filter((i) => `${i.productId}-${i.variant || ''}` !== key);
+				const key = `${productId}-${variant || ''}-${dropId || ''}`;
+				const filtered = items.filter((i) => `${i.productId}-${i.variant || ''}-${i.dropId || ''}` !== key);
 				persist(filtered);
 				return filtered;
 			});
 		},
-		updateQuantity(productId: number, variant: string | undefined, quantity: number) {
+		updateQuantity(productId: number, variant: string | undefined, quantity: number, dropId?: number) {
 			update((items) => {
-				const key = `${productId}-${variant || ''}`;
-				const item = items.find((i) => `${i.productId}-${i.variant || ''}` === key);
+				const key = `${productId}-${variant || ''}-${dropId || ''}`;
+				const item = items.find((i) => `${i.productId}-${i.variant || ''}-${i.dropId || ''}` === key);
 				if (item) item.quantity = Math.max(1, quantity);
 				persist(items);
 				return [...items];

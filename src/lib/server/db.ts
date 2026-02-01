@@ -30,6 +30,15 @@ function initSchema() {
 		db.exec(SCHEMA);
 	}
 
+	// Add columns to existing tables (safe to re-run)
+	const alterStatements = [
+		'ALTER TABLE orders ADD COLUMN stage TEXT DEFAULT NULL',
+		'ALTER TABLE orders ADD COLUMN drop_id INTEGER DEFAULT NULL'
+	];
+	for (const stmt of alterStatements) {
+		try { db.exec(stmt); } catch { /* column already exists */ }
+	}
+
 	// Seed if products table empty
 	const count = db.prepare('SELECT COUNT(*) as c FROM products').get() as { c: number };
 	if (count.c === 0) {
@@ -91,7 +100,29 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   product_id INTEGER,
   frequency TEXT,
   status TEXT,
+  stripe_price_id TEXT,
+  current_period_end TEXT,
+  cancel_at_period_end INTEGER DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS drops (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  drop_date TEXT NOT NULL,
+  opens_at TEXT NOT NULL,
+  closes_at TEXT,
+  pickup_start TEXT,
+  pickup_end TEXT,
+  status TEXT DEFAULT 'scheduled',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS drop_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  drop_id INTEGER NOT NULL REFERENCES drops(id),
+  product_id INTEGER NOT NULL REFERENCES products(id),
+  quantity_available INTEGER NOT NULL,
+  quantity_sold INTEGER DEFAULT 0,
+  price_cents_override INTEGER
 );`;
 
 const SEED = `
