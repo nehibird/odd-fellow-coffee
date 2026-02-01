@@ -8,6 +8,7 @@
 		description: string;
 		price_cents: number;
 		variants: string | null;
+		subscribable?: number;
 		image: string | null;
 	};
 
@@ -30,6 +31,36 @@
 			variant: selectedVariant || undefined,
 			image: product.image || undefined
 		});
+	}
+
+	// Subscribe state
+	let showSubscribe = false;
+	let subFrequency = 'weekly';
+	let subEmail = '';
+	let subLoading = false;
+	let subError = '';
+
+	async function subscribe() {
+		if (!subEmail) { subError = 'Email required'; return; }
+		subLoading = true;
+		subError = '';
+		try {
+			const res = await fetch('/api/subscribe', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ productId: product.id, frequency: subFrequency, email: subEmail })
+			});
+			const data = await res.json();
+			if (data.url) {
+				window.location.href = data.url;
+			} else {
+				subError = data.message || 'Failed to start subscription';
+			}
+		} catch {
+			subError = 'Something went wrong';
+		} finally {
+			subLoading = false;
+		}
 	}
 </script>
 
@@ -62,4 +93,33 @@
 	>
 		Add to Cart
 	</button>
+
+	{#if product.subscribable}
+		{#if !showSubscribe}
+			<button
+				on:click={() => (showSubscribe = true)}
+				class="mt-2 w-full rounded-full border border-medium-carmine py-2 text-sm font-medium text-medium-carmine transition-colors hover:bg-medium-carmine hover:text-white"
+			>
+				Subscribe
+			</button>
+		{:else}
+			<div class="mt-2 space-y-2 rounded-lg border bg-gray-50 p-3">
+				<select bind:value={subFrequency} class="w-full rounded border px-2 py-1 text-sm">
+					<option value="weekly">Weekly</option>
+					<option value="biweekly">Bi-weekly</option>
+					<option value="monthly">Monthly</option>
+				</select>
+				<input bind:value={subEmail} type="email" placeholder="Your email" class="w-full rounded border px-2 py-1 text-sm" />
+				{#if subError}<p class="text-xs text-red-500">{subError}</p>{/if}
+				<button
+					on:click={subscribe}
+					disabled={subLoading}
+					class="w-full rounded-full bg-medium-carmine py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
+				>
+					{subLoading ? 'Processing...' : 'Subscribe with Stripe'}
+				</button>
+				<button on:click={() => (showSubscribe = false)} class="w-full text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+			</div>
+		{/if}
+	{/if}
 </div>

@@ -20,9 +20,10 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variant: i.variant })),
+					items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variant: i.variant, dropItemId: i.dropItemId })),
 					email,
-					name
+					name,
+					dropId: items[0]?.dropId || undefined
 				})
 			});
 			const data = await res.json();
@@ -61,10 +62,10 @@
 						<p class="text-medium-carmine font-bold">${(item.price_cents / 100).toFixed(2)}</p>
 					</div>
 					<div class="flex items-center gap-3">
-						<button class="rounded bg-gray-100 px-3 py-1" on:click={() => cart.updateQuantity(item.productId, item.variant, item.quantity - 1)}>-</button>
+						<button class="rounded bg-gray-100 px-3 py-1" on:click={() => cart.updateQuantity(item.productId, item.variant, item.quantity - 1, item.dropId)}>-</button>
 						<span class="w-8 text-center">{item.quantity}</span>
-						<button class="rounded bg-gray-100 px-3 py-1" on:click={() => cart.updateQuantity(item.productId, item.variant, item.quantity + 1)}>+</button>
-						<button class="ml-4 text-red-500 hover:text-red-700" on:click={() => cart.remove(item.productId, item.variant)}>Remove</button>
+						<button class="rounded bg-gray-100 px-3 py-1" on:click={() => cart.updateQuantity(item.productId, item.variant, item.quantity + 1, item.dropId)}>+</button>
+						<button class="ml-4 text-red-500 hover:text-red-700" on:click={() => cart.remove(item.productId, item.variant, item.dropId)}>Remove</button>
 					</div>
 				</div>
 			{/each}

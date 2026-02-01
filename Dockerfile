@@ -10,6 +10,6 @@ WORKDIR /app
 COPY --from=builder /app/build build/
 COPY --from=builder /app/package*.json ./
 RUN npm ci --omit=dev
-EXPOSE 3000
+EXPOSE 3200
 ENV NODE_ENV=production
 CMD ["node", "build"]

@@ -1,4 +1,5 @@
 <script lang="ts">
+	let username = '';
 	let password = '';
 	let loggedIn = false;
 	let errorMsg = '';
@@ -8,12 +9,13 @@
 		const res = await fetch('/api/admin/login', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ password })
+			body: JSON.stringify({ username, password })
 		});
 		if (res.ok) {
 			loggedIn = true;
 		} else {
-			errorMsg = 'Invalid password';
+			const data = await res.json().catch(() => null);
+			errorMsg = data?.message || 'Invalid credentials';
 		}
 	}
 </script>
@@ -26,7 +28,8 @@
 	{#if !loggedIn}
 		<div class="mx-auto max-w-sm">
 			<h1 class="text-3xl font-bold">Admin Login</h1>
-			<input type="password" bind:value={password} placeholder="Password" class="mt-4 w-full rounded border px-4 py-2" on:keydown={(e) => e.key === 'Enter' && login()} />
+			<input type="text" bind:value={username} placeholder="Username" autocomplete="username" class="mt-4 w-full rounded border px-4 py-2" />
+			<input type="password" bind:value={password} placeholder="Password" autocomplete="current-password" class="mt-3 w-full rounded border px-4 py-2" on:keydown={(e) => e.key === 'Enter' && login()} />
 			{#if errorMsg}<p class="mt-2 text-sm text-red-500">{errorMsg}</p>{/if}
 			<button on:click={login} class="mt-3 w-full rounded-full bg-black py-2 text-white hover:bg-medium-carmine">Login</button>
 		</div>
@@ -52,6 +55,10 @@
 			<a href="/admin/subscriptions" class="rounded-xl border p-6 transition-shadow hover:shadow-md">
 				<h2 class="text-xl font-semibold">Subscriptions</h2>
 				<p class="text-gray-500">View active subscriptions</p>
+			</a>
+			<a href="/admin/drops" class="rounded-xl border p-6 transition-shadow hover:shadow-md">
+				<h2 class="text-xl font-semibold">Drops</h2>
+				<p class="text-gray-500">Manage bake day drops</p>
 			</a>
 		</div>
 	{/if}
