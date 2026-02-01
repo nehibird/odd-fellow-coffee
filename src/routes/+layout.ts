@@ -1,1 +1,1 @@
-export const prerender = true;
+// SSR enabled (default), no prerender for dynamic e-commerce pages
