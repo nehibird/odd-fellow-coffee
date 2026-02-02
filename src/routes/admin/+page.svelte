@@ -1,21 +1,36 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+
 	let username = '';
 	let password = '';
 	let loggedIn = false;
 	let errorMsg = '';
+	let loading = false;
+
+	onMount(async () => {
+		const res = await fetch('/api/admin/orders');
+		if (res.ok) loggedIn = true;
+	});
 
 	async function login() {
 		errorMsg = '';
-		const res = await fetch('/api/admin/login', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ username, password })
-		});
-		if (res.ok) {
-			loggedIn = true;
-		} else {
-			const data = await res.json().catch(() => null);
-			errorMsg = data?.message || 'Invalid credentials';
+		loading = true;
+		try {
+			const res = await fetch('/api/admin/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username, password })
+			});
+			if (res.ok) {
+				loggedIn = true;
+			} else {
+				const data = await res.json().catch(() => null);
+				errorMsg = data?.message || 'Invalid credentials';
+			}
+		} catch {
+			errorMsg = 'Network error. Please try again.';
+		} finally {
+			loading = false;
 		}
 	}
 </script>
@@ -31,7 +46,9 @@
 			<input type="text" bind:value={username} placeholder="Username" autocomplete="username" class="mt-4 w-full rounded border px-4 py-2" />
 			<input type="password" bind:value={password} placeholder="Password" autocomplete="current-password" class="mt-3 w-full rounded border px-4 py-2" on:keydown={(e) => e.key === 'Enter' && login()} />
 			{#if errorMsg}<p class="mt-2 text-sm text-red-500">{errorMsg}</p>{/if}
-			<button on:click={login} class="mt-3 w-full rounded-full bg-black py-2 text-white hover:bg-medium-carmine">Login</button>
+			<button on:click={login} disabled={loading} class="mt-3 w-full rounded-full bg-black py-2 text-white hover:bg-medium-carmine disabled:opacity-50">
+				{loading ? 'Logging in...' : 'Login'}
+			</button>
 		</div>
 	{:else}
 		<h1 class="text-3xl font-bold">Dashboard</h1>

@@ -3,6 +3,8 @@
 
 	let orders: any[] = [];
 	let error = '';
+	let busyId: number | null = null;
+	let toast = '';
 
 	onMount(async () => {
 		const res = await fetch('/api/admin/orders');
@@ -10,22 +12,45 @@
 		else error = 'Not authorized. Please login at /admin first.';
 	});
 
+	function showToast(msg: string) {
+		toast = msg;
+		setTimeout(() => (toast = ''), 3000);
+	}
+
 	async function updateStatus(id: number, status: string) {
-		await fetch('/api/admin/orders', {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ id, status })
-		});
-		orders = orders.map((o) => (o.id === id ? { ...o, status } : o));
+		busyId = id;
+		try {
+			const res = await fetch('/api/admin/orders', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ id, status })
+			});
+			if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || 'Update failed');
+			orders = orders.map((o) => (o.id === id ? { ...o, status } : o));
+			showToast(`Order #${id} marked ${status}`);
+		} catch (e: any) {
+			showToast(`Error: ${e.message}`);
+		} finally {
+			busyId = null;
+		}
 	}
 
 	async function updateStage(id: number, stage: string) {
-		await fetch('/api/admin/orders', {
-			method: 'PUT',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ id, stage })
-		});
-		orders = orders.map((o) => (o.id === id ? { ...o, stage } : o));
+		busyId = id;
+		try {
+			const res = await fetch('/api/admin/orders', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ id, stage })
+			});
+			if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || 'Update failed');
+			orders = orders.map((o) => (o.id === id ? { ...o, stage } : o));
+			showToast(`Order #${id} moved to ${stage.replace('_', ' ')}`);
+		} catch (e: any) {
+			showToast(`Error: ${e.message}`);
+		} finally {
+			busyId = null;
+		}
 	}
 
 	const statusColors: Record<string, string> = {
@@ -49,6 +74,10 @@
 </script>
 
 <svelte:head><title>Orders - Admin</title></svelte:head>
+
+{#if toast}
+	<div class="fixed top-4 right-4 z-50 rounded-lg px-4 py-2 text-sm text-white shadow-lg {toast.startsWith('Error') ? 'bg-red-600' : 'bg-green-600'}">{toast}</div>
+{/if}
 
 <section class="mx-auto max-w-screen-xl px-8 py-10">
 	<div class="flex items-center justify-between">
@@ -75,16 +104,20 @@
 							<span class="rounded-full px-3 py-1 text-xs font-medium {stageColors[order.stage] || 'bg-gray-100'}">{order.stage.replace('_', ' ')}</span>
 							{@const next = nextStage(order.stage)}
 							{#if next}
-								<button class="text-xs text-blue-600 hover:underline" on:click={() => updateStage(order.id, next)}>
-									&rarr; {next.replace('_', ' ')}
+								<button class="text-xs text-blue-600 hover:underline disabled:opacity-50" disabled={busyId === order.id} on:click={() => updateStage(order.id, next)}>
+									{busyId === order.id ? '...' : `\u2192 ${next.replace('_', ' ')}`}
 								</button>
 							{/if}
 						{:else}
 							{#if order.status === 'pending'}
-								<button class="text-xs text-blue-600 hover:underline" on:click={() => updateStatus(order.id, 'confirmed')}>Confirm</button>
+								<button class="text-xs text-blue-600 hover:underline disabled:opacity-50" disabled={busyId === order.id} on:click={() => updateStatus(order.id, 'confirmed')}>
+									{busyId === order.id ? '...' : 'Confirm'}
+								</button>
 							{/if}
 							{#if order.status === 'confirmed'}
-								<button class="text-xs text-green-600 hover:underline" on:click={() => updateStatus(order.id, 'fulfilled')}>Fulfill</button>
+								<button class="text-xs text-green-600 hover:underline disabled:opacity-50" disabled={busyId === order.id} on:click={() => updateStatus(order.id, 'fulfilled')}>
+									{busyId === order.id ? '...' : 'Fulfill'}
+								</button>
 							{/if}
 						{/if}
 					</div>

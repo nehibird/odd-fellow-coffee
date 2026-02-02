@@ -6,12 +6,19 @@
 	let showForm = false;
 	let editing: any = null;
 	let form = { name: '', category: 'coffee', description: '', price_cents: 0, variants: '', subscribable: false, image: '' };
+	let saving = false;
+	let toast = '';
 
 	onMount(async () => {
 		const res = await fetch('/api/admin/products');
 		if (res.ok) products = await res.json();
 		else error = 'Not authorized.';
 	});
+
+	function showToast(msg: string) {
+		toast = msg;
+		setTimeout(() => (toast = ''), 3000);
+	}
 
 	function editProduct(p: any) {
 		editing = p;
@@ -26,29 +33,52 @@
 	}
 
 	async function save() {
-		const method = editing ? 'PUT' : 'POST';
-		const body = editing ? { ...form, id: editing.id, active: true } : form;
-		await fetch('/api/admin/products', {
-			method,
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(body)
-		});
-		showForm = false;
-		const res = await fetch('/api/admin/products');
-		if (res.ok) products = await res.json();
+		if (!form.name.trim()) { showToast('Error: Name is required'); return; }
+		if (form.price_cents <= 0) { showToast('Error: Price must be greater than 0'); return; }
+
+		saving = true;
+		try {
+			const method = editing ? 'PUT' : 'POST';
+			const body = editing ? { ...form, id: editing.id, active: true } : form;
+			const res = await fetch('/api/admin/products', {
+				method,
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body)
+			});
+			if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || 'Save failed');
+			showForm = false;
+			const r = await fetch('/api/admin/products');
+			if (r.ok) products = await r.json();
+			showToast(editing ? 'Product updated' : 'Product created');
+		} catch (e: any) {
+			showToast(`Error: ${e.message}`);
+		} finally {
+			saving = false;
+		}
 	}
 
-	async function deactivate(id: number) {
-		await fetch('/api/admin/products', {
-			method: 'DELETE',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ id })
-		});
-		products = products.filter((p) => p.id !== id);
+	async function deactivate(id: number, name: string) {
+		if (!confirm(`Deactivate "${name}"? It will no longer appear in the shop.`)) return;
+		try {
+			const res = await fetch('/api/admin/products', {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ id })
+			});
+			if (!res.ok) throw new Error('Deactivate failed');
+			products = products.filter((p) => p.id !== id);
+			showToast(`"${name}" deactivated`);
+		} catch (e: any) {
+			showToast(`Error: ${e.message}`);
+		}
 	}
 </script>
 
 <svelte:head><title>Products - Admin</title></svelte:head>
+
+{#if toast}
+	<div class="fixed top-4 right-4 z-50 rounded-lg px-4 py-2 text-sm text-white shadow-lg {toast.startsWith('Error') ? 'bg-red-600' : 'bg-green-600'}">{toast}</div>
+{/if}
 
 <section class="mx-auto max-w-screen-xl px-8 py-10">
 	<div class="flex items-center justify-between">
@@ -77,7 +107,9 @@
 				<input type="checkbox" bind:checked={form.subscribable} /> Subscribable
 			</label>
 			<div class="flex gap-2">
-				<button on:click={save} class="rounded-full bg-black px-5 py-2 text-sm text-white hover:bg-medium-carmine">Save</button>
+				<button on:click={save} disabled={saving} class="rounded-full bg-black px-5 py-2 text-sm text-white hover:bg-medium-carmine disabled:opacity-50">
+					{saving ? 'Saving...' : 'Save'}
+				</button>
 				<button on:click={() => (showForm = false)} class="rounded-full border px-5 py-2 text-sm">Cancel</button>
 			</div>
 		</div>
@@ -92,7 +124,7 @@
 				</div>
 				<div class="flex gap-2">
 					<button class="text-xs text-blue-600 hover:underline" on:click={() => editProduct(p)}>Edit</button>
-					<button class="text-xs text-red-600 hover:underline" on:click={() => deactivate(p.id)}>Deactivate</button>
+					<button class="text-xs text-red-600 hover:underline" on:click={() => deactivate(p.id, p.name)}>Deactivate</button>
 				</div>
 			</div>
 		{/each}
