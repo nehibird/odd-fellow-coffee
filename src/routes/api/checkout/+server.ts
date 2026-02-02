@@ -95,10 +95,12 @@ export async function POST({ request }) {
 		).run(orderId, reservationData.date, reservationData.timeSlot, JSON.stringify(items), name || '', email);
 	}
 
+	const collectShipping = !reservationData;
 	const session = await createCheckoutSession(
 		lineItems, email,
 		`${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`,
-		`${SITE_URL}/checkout/cancel`
+		`${SITE_URL}/checkout/cancel`,
+		{ collectShipping }
 	);
 	db.prepare('UPDATE orders SET stripe_session_id = ? WHERE id = ?').run(session.id, orderId);
 
