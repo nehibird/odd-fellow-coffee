@@ -15,7 +15,8 @@ export async function createCheckoutSession(
 	items: LineItem[],
 	customerEmail: string,
 	successUrl: string,
-	cancelUrl: string
+	cancelUrl: string,
+	opts?: { collectShipping?: boolean }
 ) {
 	const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item) => ({
 		price_data: {
@@ -26,14 +27,44 @@ export async function createCheckoutSession(
 		quantity: item.quantity
 	}));
 
-	return stripe.checkout.sessions.create({
+	const sessionParams: Stripe.Checkout.SessionCreateParams = {
 		payment_method_types: ['card'],
 		line_items: lineItems,
 		mode: 'payment',
 		customer_email: customerEmail,
 		success_url: successUrl,
 		cancel_url: cancelUrl
-	});
+	};
+
+	if (opts?.collectShipping) {
+		sessionParams.shipping_address_collection = { allowed_countries: ['US'] };
+		sessionParams.shipping_options = [
+			{
+				shipping_rate_data: {
+					type: 'fixed_amount',
+					fixed_amount: { amount: 0, currency: 'usd' },
+					display_name: 'Free Local Delivery (Tonkawa, OK 74653 area)',
+					delivery_estimate: {
+						minimum: { unit: 'business_day', value: 1 },
+						maximum: { unit: 'business_day', value: 2 }
+					}
+				}
+			},
+			{
+				shipping_rate_data: {
+					type: 'fixed_amount',
+					fixed_amount: { amount: 599, currency: 'usd' },
+					display_name: 'Flat Rate Shipping (USPS, 3-5 business days)',
+					delivery_estimate: {
+						minimum: { unit: 'business_day', value: 3 },
+						maximum: { unit: 'business_day', value: 5 }
+					}
+				}
+			}
+		];
+	}
+
+	return stripe.checkout.sessions.create(sessionParams);
 }
 
 const FREQUENCY_MAP: Record<string, { interval: 'week' | 'month'; interval_count: number }> = {

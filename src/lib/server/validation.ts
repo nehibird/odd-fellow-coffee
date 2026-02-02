@@ -29,7 +29,7 @@ export function verifyEmailToken(email: string, token: string): boolean {
 }
 
 const VALID_ORDER_STATUSES = new Set(['pending', 'confirmed', 'fulfilled']);
-const VALID_ORDER_STAGES = new Set(['ordered', 'baking', 'ready', 'picked_up']);
+const VALID_ORDER_STAGES = new Set(['ordered', 'baking', 'ready', 'picked_up', 'shipped', 'delivered']);
 const VALID_DROP_STATUSES = new Set(['scheduled', 'live', 'sold_out', 'closed']);
 const VALID_FREQUENCIES = new Set(['weekly', 'biweekly', 'monthly']);
 

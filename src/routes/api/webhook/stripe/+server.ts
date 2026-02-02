@@ -53,10 +53,31 @@ export async function POST({ request }) {
 				);
 			}
 		} else {
-			// One-time payment
+			// One-time payment — retrieve full session for shipping details
+			const fullSession = await stripe.checkout.sessions.retrieve(session.id, {
+				expand: ['shipping_cost.shipping_rate']
+			}) as any;
 			const order = db.prepare('SELECT * FROM orders WHERE stripe_session_id = ?').get(session.id) as any;
 			if (order) {
-				db.prepare('UPDATE orders SET status = ? WHERE id = ?').run('confirmed', order.id);
+				const shipping = fullSession.shipping_details;
+				const shippingCost = fullSession.shipping_cost;
+				if (shipping?.address) {
+					const addr = JSON.stringify({
+						line1: shipping.address.line1,
+						line2: shipping.address.line2 || '',
+						city: shipping.address.city,
+						state: shipping.address.state,
+						postal_code: shipping.address.postal_code,
+						country: shipping.address.country
+					});
+					const rateName = (shippingCost?.shipping_rate as any)?.display_name || '';
+					const shippingCents = shippingCost?.amount_total || 0;
+					db.prepare(
+						'UPDATE orders SET status = ?, shipping_name = ?, shipping_address = ?, shipping_method = ?, shipping_cents = ? WHERE id = ?'
+					).run('confirmed', shipping.name || '', addr, rateName, shippingCents, order.id);
+				} else {
+					db.prepare('UPDATE orders SET status = ? WHERE id = ?').run('confirmed', order.id);
+				}
 				try {
 					await sendOrderConfirmation(order.customer_email, order.customer_name, order.id, order.total_cents);
 				} catch (e) {

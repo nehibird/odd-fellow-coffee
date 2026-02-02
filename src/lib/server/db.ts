@@ -33,7 +33,11 @@ function initSchema() {
 	// Add columns to existing tables (safe to re-run)
 	const alterStatements = [
 		'ALTER TABLE orders ADD COLUMN stage TEXT DEFAULT NULL',
-		'ALTER TABLE orders ADD COLUMN drop_id INTEGER DEFAULT NULL'
+		'ALTER TABLE orders ADD COLUMN drop_id INTEGER DEFAULT NULL',
+		'ALTER TABLE orders ADD COLUMN shipping_name TEXT',
+		'ALTER TABLE orders ADD COLUMN shipping_address TEXT',
+		'ALTER TABLE orders ADD COLUMN shipping_method TEXT',
+		'ALTER TABLE orders ADD COLUMN shipping_cents INTEGER DEFAULT 0'
 	];
 	for (const stmt of alterStatements) {
 		try { db.exec(stmt); } catch { /* column already exists */ }
