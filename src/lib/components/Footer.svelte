@@ -1,16 +1,16 @@
 <script>
 	let contactIcons = [
 		{ id: 'c1', src: '/assets/icons/telephone.svg', alt: 'telephone', info: '1 580-628-1542' },
-		{ id: 'c2', src: '/assets/icons/email.svg', alt: 'email', info: 'email@email.com' }
+		{ id: 'c2', src: '/assets/icons/email.svg', alt: 'email', info: 'oddfellowcoffee@birdherd.media' }
 	];
 
 	const socialLinks = [
-		{ href: '#', src: '/assets/icons/facebook-white.svg', alt: 'facebook' },
-		{ href: '#', src: '/assets/icons/instagram-white.svg', alt: 'instagram' }
+		{ href: 'https://www.facebook.com/oddfellowcoffee', src: '/assets/icons/facebook-white.svg', alt: 'facebook' },
+		{ href: 'https://www.instagram.com/oddfellowcoffee', src: '/assets/icons/instagram-white.svg', alt: 'instagram' }
 	];
 </script>
 
-<section class="relative bg-black px-8 pt-10 md:pt-16">
+<section id="contact" class="relative bg-black px-8 pt-10 md:pt-16">
 	<div class="mx-auto grid max-w-screen-xl grid-cols-2 justify-center md:grid-cols-4">
 		<div class="">
 			<img

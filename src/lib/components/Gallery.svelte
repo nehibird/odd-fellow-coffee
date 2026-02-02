@@ -30,7 +30,7 @@
 
 <section class="white-overlay-right relative mx-auto max-w-screen-xl px-8 pb-10">
 	<h3 class="w-full pb-6 text-left text-4xl capitalize md:pb-10">
-		Expore <span class="mt-2 block font-semibold text-medium-carmine">our gallery</span>
+		Explore <span class="mt-2 block font-semibold text-medium-carmine">our gallery</span>
 	</h3>
 
 	<div class="relative flex items-center gap-4 overflow-x-auto md:grid md:grid-cols-3 md:gap-8">

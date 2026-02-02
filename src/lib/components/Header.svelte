@@ -22,8 +22,8 @@
 		}
 	}
 	const socialLinks = [
-		{ href: '#', src: '/assets/icons/facebook.svg', alt: 'facebook' },
-		{ href: '#', src: '/assets/icons/instagram.svg', alt: 'instagram' }
+		{ href: 'https://www.facebook.com/oddfellowcoffee', src: '/assets/icons/facebook.svg', alt: 'facebook' },
+		{ href: 'https://www.instagram.com/oddfellowcoffee', src: '/assets/icons/instagram.svg', alt: 'instagram' }
 	];
 </script>
 
