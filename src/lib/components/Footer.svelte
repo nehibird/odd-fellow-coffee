@@ -5,8 +5,8 @@
 	];
 
 	const socialLinks = [
-		{ href: 'https://www.facebook.com/oddfellowcoffee', src: '/assets/icons/facebook-white.svg', alt: 'facebook' },
-		{ href: 'https://www.instagram.com/oddfellowcoffee', src: '/assets/icons/instagram-white.svg', alt: 'instagram' }
+		{ href: 'https://www.facebook.com/profile.php?id=61567007641925', src: '/assets/icons/facebook-white.svg', alt: 'facebook' },
+		{ href: 'https://www.instagram.com/oddfellowcoffeeroasters', src: '/assets/icons/instagram-white.svg', alt: 'instagram' }
 	];
 </script>
 
