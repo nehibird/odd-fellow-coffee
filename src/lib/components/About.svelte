@@ -1,7 +1,7 @@
 <script lang="ts">
 </script>
 
-<section class="mx-auto max-w-screen-xl px-8 py-6 md:py-10">
+<section id="about" class="mx-auto max-w-screen-xl px-8 py-6 md:py-10">
 	<h3 class="w-full pb-6 text-left text-4xl capitalize md:pb-10">
 		<span class="text-medium-carmine">a</span>bout
 	</h3>
