@@ -91,7 +91,13 @@
 			const res = await fetch('/api/subscribe', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ productId: product.id, frequency: subFrequency, email: subEmail })
+				body: JSON.stringify({
+					productId: product.id,
+					frequency: subFrequency,
+					email: subEmail,
+					variant: variantString,
+					price_cents: currentPrice
+				})
 			});
 			const data = await res.json();
 			if (data.url) {
@@ -176,10 +182,13 @@
 			</button>
 		{:else}
 			<div class="mt-2 space-y-2 rounded-lg border bg-gray-50 p-3">
+				{#if variantString}
+					<p class="text-xs text-gray-600">Subscribing to: <span class="font-medium">{variantString}</span> — ${(currentPrice / 100).toFixed(2)}/delivery</p>
+				{/if}
 				<select bind:value={subFrequency} class="w-full rounded border px-2 py-1 text-sm">
-					<option value="weekly">Weekly</option>
-					<option value="biweekly">Bi-weekly</option>
-					<option value="monthly">Monthly</option>
+					<option value="weekly">Weekly — ${(currentPrice / 100).toFixed(2)}/week</option>
+					<option value="biweekly">Every 2 Weeks — ${(currentPrice / 100).toFixed(2)}/2 weeks</option>
+					<option value="monthly">Monthly — ${(currentPrice / 100).toFixed(2)}/month</option>
 				</select>
 				<input bind:value={subEmail} type="email" placeholder="Your email" class="w-full rounded border px-2 py-1 text-sm" />
 				{#if subError}<p class="text-xs text-red-500">{subError}</p>{/if}

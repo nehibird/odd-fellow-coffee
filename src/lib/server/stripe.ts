@@ -84,10 +84,13 @@ export async function createSubscriptionCheckout(
 	customerEmail: string,
 	productId: number,
 	successUrl: string,
-	cancelUrl: string
+	cancelUrl: string,
+	variant?: string
 ) {
 	const recurring = FREQUENCY_MAP[frequency];
 	if (!recurring) throw new Error(`Invalid frequency: ${frequency}`);
+
+	const frequencyLabel = frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Every 2 Weeks' : 'Monthly';
 
 	return stripe.checkout.sessions.create({
 		payment_method_types: ['card'],
@@ -95,7 +98,7 @@ export async function createSubscriptionCheckout(
 			{
 				price_data: {
 					currency: 'usd',
-					product_data: { name: `${productName} (${frequency})` },
+					product_data: { name: `${productName} — ${frequencyLabel}` },
 					unit_amount: priceCents,
 					recurring
 				},
@@ -108,7 +111,8 @@ export async function createSubscriptionCheckout(
 		cancel_url: cancelUrl,
 		metadata: {
 			product_id: String(productId),
-			frequency
+			frequency,
+			variant: variant || ''
 		}
 	});
 }
