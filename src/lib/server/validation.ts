@@ -1,4 +1,4 @@
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { STRIPE_WEBHOOK_SECRET } from '$env/static/private';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -7,25 +7,45 @@ export function isValidEmail(email: string): boolean {
 	return EMAIL_RE.test(email) && email.length <= 254;
 }
 
-// HMAC token for subscription self-service: ties an email to a short-lived token
-// so only someone who went through checkout (and received the token) can look up / cancel
-const HMAC_SECRET = STRIPE_WEBHOOK_SECRET; // reuse an existing secret
+// HMAC token for subscription self-service with 24-hour expiry
+// Token format: timestamp.hmac where hmac = HMAC(email + timestamp)
+const HMAC_SECRET = STRIPE_WEBHOOK_SECRET;
+const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export function createEmailToken(email: string): string {
-	return createHmac('sha256', HMAC_SECRET)
-		.update(email.toLowerCase().trim())
+	const timestamp = Date.now().toString(36); // base36 for compact representation
+	const hmac = createHmac('sha256', HMAC_SECRET)
+		.update(email.toLowerCase().trim() + timestamp)
 		.digest('hex')
-		.slice(0, 32);
+		.slice(0, 24);
+	return `${timestamp}.${hmac}`;
 }
 
 export function verifyEmailToken(email: string, token: string): boolean {
-	const expected = createEmailToken(email);
-	if (token.length !== expected.length) return false;
-	let match = true;
-	for (let i = 0; i < expected.length; i++) {
-		if (token[i] !== expected[i]) match = false;
+	const parts = token.split('.');
+	if (parts.length !== 2) return false;
+
+	const [timestamp, hmac] = parts;
+
+	// Check expiry
+	const tokenTime = parseInt(timestamp, 36);
+	if (isNaN(tokenTime) || Date.now() - tokenTime > TOKEN_EXPIRY_MS) {
+		return false;
 	}
-	return match;
+
+	// Verify HMAC
+	const expected = createHmac('sha256', HMAC_SECRET)
+		.update(email.toLowerCase().trim() + timestamp)
+		.digest('hex')
+		.slice(0, 24);
+
+	if (hmac.length !== expected.length) return false;
+
+	try {
+		return timingSafeEqual(Buffer.from(hmac), Buffer.from(expected));
+	} catch {
+		return false;
+	}
 }
 
 const VALID_ORDER_STATUSES = new Set(['pending', 'confirmed', 'fulfilled']);
