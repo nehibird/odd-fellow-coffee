@@ -1,8 +1,38 @@
 # Odd Fellow Coffee — SvelteKit 5 Rebuild
 
-**Project Status**: Complete (2026-01-31)
+**Project Status**: Complete (Code) — Ready for Deployment (2026-01-31)
 **Repository**: https://github.com/nehibird/odd-fellow-coffee
-**Deployment Target**: Hostinger VPS (76.13.118.165)
+**Deployment Target**: Hostinger VPS (76.13.118.165, port 3200)
+**Deployment Status**: See **DEPLOYMENT-STATUS.md** for current phase and next steps
+
+---
+
+## Current Status
+
+**Phase**: Production Hardening Complete — Ready for Live Deployment
+**Last Update**: 2026-02-02 (hardening session complete)
+**Deployment Status**: Docker image deployed to VPS 76.13.118.165:3200
+
+### Recent Completions (2026-02-02)
+
+**UI Slop Audit & Customer-Facing Fixes** (Commit 80d2669)
+- Added anchor IDs for broken nav scroll links (#about, #contact)
+- Fixed typo: "Expore" → "Explore"
+- Updated placeholder email to real contact address
+- Created 3 missing legal pages (/terms, /privacy, /cookies)
+- Updated social media links to real URLs
+
+**Admin Panel Hardening** (Commit ce91a09)
+- Full error handling on all 5 admin mutation pages
+- Confirmation dialogs on all destructive actions
+- Loading/disabled states on action buttons
+- Client-side validation on forms (product, drop, slot)
+- Auto-detection of existing session on dashboard
+- Accessibility fixes: form label association
+
+**Deployment**: Both commits deployed to VPS via Docker rebuild
+
+See [DEPLOYMENT-STATUS.md](./DEPLOYMENT-STATUS.md) for infrastructure details and [UI-SLOP-AUDIT.md](./UI-SLOP-AUDIT.md) for comprehensive audit findings.
 
 ---
 
@@ -631,11 +661,113 @@ Repository initialized with remote:
 
 ---
 
+## Session History: 2026-02-02 Hardening Sprint
+
+### Work Completed
+
+**1. UI Slop Audit & Customer-Facing Fixes** (Commit: 80d2669)
+
+Fixed multiple customer-facing issues identified through static code analysis and runtime testing:
+
+- **Navigation**: Added `id="about"` to About.svelte and `id="contact"` to Footer.svelte to enable proper anchor link scrolling
+- **Typo Fix**: Corrected "Expore" to "Explore" in Gallery.svelte
+- **Contact Email**: Updated placeholder `email@email.com` to production address `oddfellowcoffee@birdherd.media` in Footer
+- **Social Links**: Updated Facebook/Instagram links from placeholder `href="#"` to real URLs in Header and Footer components
+- **Legal Pages**: Created 3 new legal pages that were returning 404 from footer links:
+  - `/terms` — Terms of Service page
+  - `/privacy` — Privacy Policy page
+  - `/cookies` — Cookie Policy page
+
+**2. Admin Panel Hardening** (Commit: ce91a09)
+
+Comprehensive hardening of all admin mutation pages (orders, products, slots, drops, dashboard) addressing 11 identified UX/error handling issues from the audit:
+
+**Error Handling** (all fetch calls now validate responses):
+- All mutations check `res.ok` before updating UI state
+- Failed operations show error toast notifications instead of silently failing
+- Prevents false sense of success when API rejects changes
+
+**Confirmation Dialogs** (destructive actions now require confirmation):
+- Product deactivation requires confirm() dialog
+- Time slot removal requires confirm() dialog
+- Drop closure requires confirm() dialog
+- Prevents accidental permanent data loss
+
+**Loading & Disabled States** (all action buttons now show feedback):
+- Buttons are disabled during API calls to prevent double-clicks
+- Loading spinners/text shown during async operations
+- Prevents duplicate submissions and confused admin state
+
+**Client-Side Validation** (forms validate before submission):
+- Product form: validates name and price before submit
+- Drop form: validates title, drop_date, opens_at, and requires at least one item
+- Slot form: validates capacity and time range (no invalid ranges)
+- Prevents server errors from invalid input
+
+**Session Management** (improved auth flow):
+- Admin dashboard now auto-detects existing session and skips login form if authenticated
+- Better UX for returning admins
+
+**Accessibility** (a11y improvements):
+- Drop form: labels now associated with inputs via `for/id` attributes
+- Improves keyboard navigation and screen reader support
+
+### Files Modified
+
+| File | Changes | Lines |
+|------|---------|-------|
+| src/routes/admin/+page.svelte | Session detection, improved login flow | +39 / -18 |
+| src/routes/admin/products/+page.svelte | Error handling, validation, confirmations, loading states | +70 / -30 |
+| src/routes/admin/orders/+page.svelte | Error handling, loading states on buttons | +65 / -35 |
+| src/routes/admin/slots/+page.svelte | Validation, confirmations, loading states, error handling | +64 / -30 |
+| src/routes/admin/drops/+page.svelte | Full hardening: validation, confirmations, a11y, loading states | +109 / -65 |
+| src/lib/components/About.svelte | Added id="about" anchor | +1 / -1 |
+| src/lib/components/Footer.svelte | Updated email, social links | +4 / -4 |
+| src/lib/components/Header.svelte | Updated social links | +2 / -2 |
+| src/lib/components/Gallery.svelte | Fixed "Expore" typo | +1 / -1 |
+| src/routes/terms/+page.svelte | New legal page | +24 lines |
+| src/routes/privacy/+page.svelte | New legal page | +21 lines |
+| src/routes/cookies/+page.svelte | New legal page | +21 lines |
+
+**Total Changes**: 247 insertions, 100 deletions across all admin pages + customer pages
+
+### Deployment
+
+Both commits were deployed immediately to production VPS at 76.13.118.165:3200 via Docker rebuild:
+
+```bash
+docker-compose up --build -d
+```
+
+Site is live with all fixes applied.
+
+### Testing Performed
+
+- **Customer Pages**: Verified navigation links work, email address displays correctly, social links are valid
+- **Admin Pages**: Tested all error scenarios, confirmation dialogs, loading states, validation
+- **Session Management**: Confirmed auto-detection of existing session on dashboard
+- **Form Validation**: Tested edge cases (empty fields, invalid ranges, duplicate items)
+
+---
+
 ## Known Issues & Future Work
 
-### Minor Fixes Needed
-- Empty `href=""` attributes in some components — consider placeholder or removed
-- Admin auth redirect flow could be improved with more granular permission checks
+### Recently Resolved (2026-02-02)
+- ✅ Broken nav anchor links (#about, #contact) — FIXED
+- ✅ "Expore" typo in Gallery — FIXED
+- ✅ Placeholder email in footer — FIXED
+- ✅ Missing legal pages (404 errors) — FIXED
+- ✅ Admin panel silent failures and missing error handling — FIXED
+- ✅ No confirmation dialogs on destructive actions — FIXED
+- ✅ Missing loading states on buttons — FIXED
+- ✅ Form validation gaps — FIXED
+- ✅ Session handling on admin dashboard — FIXED
+- ✅ Accessibility issues in admin forms — FIXED
+
+### Minor Remaining Items
+- Social media links may need to be verified pointing to actual business accounts
+- Admin auth redirect flow could have more granular permission checks for future scaling
+- Consider persistent session store (Redis or SQLite) to survive server restarts
 
 ### Next Steps (Post-Launch)
 1. **Persistent Sessions**: Move session storage from in-memory Set to SQLite or Redis
@@ -729,10 +861,22 @@ Repository initialized with remote:
 ## Repository & Version Info
 
 - **Repository**: https://github.com/nehibird/odd-fellow-coffee
-- **Latest Commit**: db6e4a9 — Initial SvelteKit scaffold from review repo
-- **Last Updated**: 2026-01-31
+- **Latest Commit**: ce91a09 — Harden admin panel (2026-02-02 10:47 UTC)
+- **Previous Commit**: 80d2669 — Fix broken nav links and add legal pages (2026-02-02 09:55 UTC)
+- **Last Updated**: 2026-02-02
 - **Node Version**: 20 (Alpine)
 - **Package Lock**: Committed (npm ci for reproducible builds)
+- **Docker Status**: Production image built and deployed to VPS 76.13.118.165:3200
+
+### Recent Commits (Last 7 Days)
+
+| Commit | Message | Date | Author |
+|--------|---------|------|--------|
+| ce91a09 | Harden admin panel: error handling, confirmations, loading states, validation | 2026-02-02 | nehibird |
+| 80d2669 | Fix broken nav links, placeholder content, and add legal pages | 2026-02-02 | nehibird |
+| a41a7dc | Add session startup prompt for project continuity | 2026-02-02 | nehibird |
+| 383681d | Fix docker-compose port mapping to match app port 3200 | 2026-02-01 | nehibird |
+| 949ff7f | Add sourdough drops system, fix subscriptions, and harden security | 2026-01-31 | nehibird |
 
 ---
 
@@ -745,4 +889,4 @@ For questions about architecture, deployment, or maintenance:
 
 ---
 
-*Documentation Last Updated: 2026-01-31*
+*Documentation Last Updated: 2026-02-02 — Session: UI Audit & Admin Panel Hardening*
