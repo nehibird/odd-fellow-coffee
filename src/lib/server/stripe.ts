@@ -13,7 +13,7 @@ interface LineItem {
 
 export async function createCheckoutSession(
 	items: LineItem[],
-	customerEmail: string,
+	customerEmail: string | undefined,
 	successUrl: string,
 	cancelUrl: string,
 	opts?: { collectShipping?: boolean }
@@ -31,10 +31,14 @@ export async function createCheckoutSession(
 		payment_method_types: ['card'],
 		line_items: lineItems,
 		mode: 'payment',
-		customer_email: customerEmail,
 		success_url: successUrl,
 		cancel_url: cancelUrl
 	};
+
+	// Only pre-fill email if provided; otherwise Stripe will collect it
+	if (customerEmail) {
+		sessionParams.customer_email = customerEmail;
+	}
 
 	if (opts?.collectShipping) {
 		sessionParams.shipping_address_collection = { allowed_countries: ['US'] };

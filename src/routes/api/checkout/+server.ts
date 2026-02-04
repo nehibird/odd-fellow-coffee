@@ -7,10 +7,11 @@ import { isValidEmail } from '$lib/server/validation';
 export async function POST({ request }) {
 	const { items, email, name, reservationData, dropId } = await request.json();
 
-	if (!items?.length || !email) {
-		throw error(400, 'Items and email required');
+	if (!items?.length) {
+		throw error(400, 'Items required');
 	}
-	if (!isValidEmail(email)) {
+	// Email is optional - Stripe will collect it during checkout
+	if (email && !isValidEmail(email)) {
 		throw error(400, 'Invalid email format');
 	}
 
@@ -103,7 +104,7 @@ export async function POST({ request }) {
 
 	const result = db.prepare(
 		'INSERT INTO orders (customer_email, customer_name, items, total_cents, status) VALUES (?, ?, ?, ?, ?)'
-	).run(email, name || '', JSON.stringify(items), totalCents, 'pending');
+	).run(email || '', name || '', JSON.stringify(items), totalCents, 'pending');
 
 	const orderId = result.lastInsertRowid;
 
