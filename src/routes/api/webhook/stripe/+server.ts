@@ -59,6 +59,8 @@ export async function POST({ request }) {
 			}) as any;
 			const order = db.prepare('SELECT * FROM orders WHERE stripe_session_id = ?').get(session.id) as any;
 			if (order) {
+				const customerEmail = session.customer_email || order.customer_email;
+				const customerName = fullSession.shipping_details?.name || fullSession.customer_details?.name || order.customer_name || '';
 				const shipping = fullSession.shipping_details;
 				const shippingCost = fullSession.shipping_cost;
 				if (shipping?.address) {
@@ -73,13 +75,13 @@ export async function POST({ request }) {
 					const rateName = (shippingCost?.shipping_rate as any)?.display_name || '';
 					const shippingCents = shippingCost?.amount_total || 0;
 					db.prepare(
-						'UPDATE orders SET status = ?, shipping_name = ?, shipping_address = ?, shipping_method = ?, shipping_cents = ? WHERE id = ?'
-					).run('confirmed', shipping.name || '', addr, rateName, shippingCents, order.id);
+						'UPDATE orders SET status = ?, customer_email = ?, customer_name = ?, shipping_name = ?, shipping_address = ?, shipping_method = ?, shipping_cents = ? WHERE id = ?'
+					).run('confirmed', customerEmail, customerName, shipping.name || '', addr, rateName, shippingCents, order.id);
 				} else {
-					db.prepare('UPDATE orders SET status = ? WHERE id = ?').run('confirmed', order.id);
+					db.prepare('UPDATE orders SET status = ?, customer_email = ?, customer_name = ? WHERE id = ?').run('confirmed', customerEmail, customerName, order.id);
 				}
 				try {
-					await sendOrderConfirmation(order.customer_email, order.customer_name, order.id, order.total_cents);
+					await sendOrderConfirmation(customerEmail, customerName, order.id, order.total_cents);
 				} catch (e) {
 					console.error('Email send failed:', e);
 				}

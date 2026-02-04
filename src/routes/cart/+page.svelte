@@ -4,15 +4,12 @@
 	let items: CartItem[] = [];
 	cart.subscribe((v) => (items = v));
 
-	let email = '';
-	let name = '';
 	let loading = false;
 	let errorMsg = '';
 
 	$: total = items.reduce((sum, i) => sum + i.price_cents * i.quantity, 0);
 
 	async function checkout() {
-		if (!email) { errorMsg = 'Email is required'; return; }
 		loading = true;
 		errorMsg = '';
 		try {
@@ -21,8 +18,6 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variant: i.variant, price_cents: i.price_cents, dropItemId: i.dropItemId })),
-					email,
-					name,
 					dropId: items[0]?.dropId || undefined
 				})
 			});
@@ -76,8 +71,6 @@
 		</div>
 
 		<div class="mt-6 max-w-md space-y-3">
-			<input bind:value={name} placeholder="Your name" class="w-full rounded border px-4 py-2" />
-			<input bind:value={email} type="email" placeholder="Email address" class="w-full rounded border px-4 py-2" required />
 			{#if errorMsg}<p class="text-sm text-red-500">{errorMsg}</p>{/if}
 			<button
 				on:click={checkout}
@@ -86,6 +79,7 @@
 			>
 				{loading ? 'Processing...' : 'Checkout with Stripe'}
 			</button>
+			<p class="text-center text-sm text-gray-500">You'll enter your details on the next page</p>
 		</div>
 	{/if}
 </section>
