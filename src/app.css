@@ -5,5 +5,14 @@
 @layer base {
 	body {
 		@apply overflow-x-hidden;
+		/* Add bottom padding for mobile nav */
+		@apply pb-20 md:pb-0;
+	}
+}
+
+/* Safe area for iPhone home bar */
+@layer utilities {
+	.pb-safe {
+		padding-bottom: env(safe-area-inset-bottom);
 	}
 }

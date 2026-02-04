@@ -60,6 +60,8 @@
 	// Build variant string for cart (e.g., "8oz - Medium")
 	$: variantString = [selectedSize, selectedGrind].filter(Boolean).join(' - ') || undefined;
 
+	let addedToCart = false;
+
 	function addToCart() {
 		cart.add({
 			productId: product.id,
@@ -69,6 +71,9 @@
 			variant: variantString,
 			image: product.image || undefined
 		});
+		// Show feedback
+		addedToCart = true;
+		setTimeout(() => { addedToCart = false; }, 2000);
 	}
 
 	// Subscribe state
@@ -118,32 +123,47 @@
 	<p class="mt-2 text-xl font-bold">${(currentPrice / 100).toFixed(2)}</p>
 
 	{#if variants?.sizes}
-		<select bind:value={selectedSize} class="mt-2 w-full rounded border px-2 py-1 text-sm">
+		<div class="mt-3 flex flex-wrap gap-2">
 			{#if hasSizePricing}
 				{#each variants.sizes as size}
-					<option value={size.name}>{size.name} - ${(size.price_cents / 100).toFixed(2)}</option>
+					<button
+						on:click={() => { selectedSize = size.name; }}
+						class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedSize === size.name ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+					>
+						{size.name}
+					</button>
 				{/each}
 			{:else}
 				{#each variants.sizes as size}
-					<option value={size}>{size}</option>
+					<button
+						on:click={() => { selectedSize = size; }}
+						class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedSize === size ? 'bg-black text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+					>
+						{size}
+					</button>
 				{/each}
 			{/if}
-		</select>
+		</div>
 	{/if}
 
 	{#if variants?.grinds}
-		<select bind:value={selectedGrind} class="mt-2 w-full rounded border px-2 py-1 text-sm">
+		<div class="mt-2 flex flex-wrap gap-1">
 			{#each variants.grinds as grind}
-				<option value={grind}>{grind}</option>
+				<button
+					on:click={() => { selectedGrind = grind; }}
+					class="rounded-full px-2 py-0.5 text-xs transition-colors {selectedGrind === grind ? 'bg-medium-carmine text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+				>
+					{grind}
+				</button>
 			{/each}
-		</select>
+		</div>
 	{/if}
 
 	<button
 		on:click={addToCart}
-		class="mt-3 w-full rounded-full bg-black py-2 text-sm font-medium text-white transition-colors hover:bg-medium-carmine"
+		class="mt-3 w-full rounded-full py-2 text-sm font-medium transition-colors {addedToCart ? 'bg-green-600 text-white' : 'bg-black text-white hover:bg-medium-carmine'}"
 	>
-		Add to Cart
+		{addedToCart ? '✓ Added!' : 'Add to Cart'}
 	</button>
 
 	{#if product.subscribable}
