@@ -19,14 +19,17 @@
 		grinds?: string[]
 	} | null = null;
 
-	// Check if sizes have pricing (new format) or are just strings (old format)
-	$: hasSizePricing = variants?.sizes?.length && typeof variants.sizes[0] === 'object';
+	// Helper function to check if sizes have pricing
+	function checkHasSizePricing(v: typeof variants): boolean {
+		return !!(v?.sizes?.length && typeof v.sizes[0] === 'object' && 'price_cents' in (v.sizes[0] as any));
+	}
 
 	$: if (product.variants) {
 		try {
 			variants = JSON.parse(product.variants);
 			if (variants?.sizes?.length) {
-				if (hasSizePricing) {
+				const hasPricing = checkHasSizePricing(variants);
+				if (hasPricing) {
 					selectedSize = (variants.sizes[0] as { name: string }).name;
 				} else {
 					selectedSize = variants.sizes[0] as string;
@@ -37,6 +40,9 @@
 			}
 		} catch { variants = null; }
 	}
+
+	// Check if current variants have pricing
+	$: hasSizePricing = checkHasSizePricing(variants);
 
 	// Get current price based on selected size
 	$: currentPrice = (() => {
