@@ -20,7 +20,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variant: i.variant, dropItemId: i.dropItemId })),
+					items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variant: i.variant, price_cents: i.price_cents, dropItemId: i.dropItemId })),
 					email,
 					name,
 					dropId: items[0]?.dropId || undefined
