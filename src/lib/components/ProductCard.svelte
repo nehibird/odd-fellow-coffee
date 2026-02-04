@@ -12,23 +12,51 @@
 		image: string | null;
 	};
 
-	let selectedVariant = '';
-	let variants: { sizes?: string[]; grinds?: string[] } | null = null;
+	let selectedSize = '';
+	let selectedGrind = '';
+	let variants: {
+		sizes?: Array<{ name: string; price_cents: number }> | string[];
+		grinds?: string[]
+	} | null = null;
+
+	// Check if sizes have pricing (new format) or are just strings (old format)
+	$: hasSizePricing = variants?.sizes?.length && typeof variants.sizes[0] === 'object';
 
 	$: if (product.variants) {
 		try {
 			variants = JSON.parse(product.variants);
-			if (variants?.sizes?.length) selectedVariant = variants.sizes[0];
+			if (variants?.sizes?.length) {
+				if (hasSizePricing) {
+					selectedSize = (variants.sizes[0] as { name: string }).name;
+				} else {
+					selectedSize = variants.sizes[0] as string;
+				}
+			}
+			if (variants?.grinds?.length) {
+				selectedGrind = variants.grinds[0];
+			}
 		} catch { variants = null; }
 	}
+
+	// Get current price based on selected size
+	$: currentPrice = (() => {
+		if (hasSizePricing && selectedSize) {
+			const sizeOption = (variants?.sizes as Array<{ name: string; price_cents: number }>)?.find(s => s.name === selectedSize);
+			return sizeOption?.price_cents || product.price_cents;
+		}
+		return product.price_cents;
+	})();
+
+	// Build variant string for cart (e.g., "8oz - Medium")
+	$: variantString = [selectedSize, selectedGrind].filter(Boolean).join(' - ') || undefined;
 
 	function addToCart() {
 		cart.add({
 			productId: product.id,
 			name: product.name,
-			price_cents: product.price_cents,
+			price_cents: currentPrice,
 			quantity: 1,
-			variant: selectedVariant || undefined,
+			variant: variantString,
 			image: product.image || undefined
 		});
 	}
@@ -77,12 +105,26 @@
 	<span class="text-xs font-medium uppercase tracking-wider text-medium-carmine">{product.category}</span>
 	<h3 class="mt-1 text-lg font-semibold">{product.name}</h3>
 	<p class="mt-1 text-sm text-gray-600">{product.description}</p>
-	<p class="mt-2 text-xl font-bold">${(product.price_cents / 100).toFixed(2)}</p>
+	<p class="mt-2 text-xl font-bold">${(currentPrice / 100).toFixed(2)}</p>
 
 	{#if variants?.sizes}
-		<select bind:value={selectedVariant} class="mt-2 w-full rounded border px-2 py-1 text-sm">
-			{#each variants.sizes as size}
-				<option value={size}>{size}</option>
+		<select bind:value={selectedSize} class="mt-2 w-full rounded border px-2 py-1 text-sm">
+			{#if hasSizePricing}
+				{#each variants.sizes as size}
+					<option value={size.name}>{size.name} - ${(size.price_cents / 100).toFixed(2)}</option>
+				{/each}
+			{:else}
+				{#each variants.sizes as size}
+					<option value={size}>{size}</option>
+				{/each}
+			{/if}
+		</select>
+	{/if}
+
+	{#if variants?.grinds}
+		<select bind:value={selectedGrind} class="mt-2 w-full rounded border px-2 py-1 text-sm">
+			{#each variants.grinds as grind}
+				<option value={grind}>{grind}</option>
 			{/each}
 		</select>
 	{/if}

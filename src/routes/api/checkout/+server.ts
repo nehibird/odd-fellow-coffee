@@ -71,12 +71,30 @@ export async function POST({ request }) {
 	}
 
 	// Regular (non-drop) checkout
-	const lineItems = items.map((item: { productId: number; quantity: number; variant?: string }) => {
+	const lineItems = items.map((item: { productId: number; quantity: number; variant?: string; price_cents?: number }) => {
 		const product = db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(item.productId) as any;
 		if (!product) throw error(400, `Product ${item.productId} not found`);
+
+		// Use cart price if provided (for variant pricing), otherwise use product base price
+		let priceCents = product.price_cents;
+		if (item.price_cents && product.variants) {
+			// Validate the price matches a valid variant price
+			try {
+				const variants = JSON.parse(product.variants);
+				if (variants.sizes && Array.isArray(variants.sizes)) {
+					const validPrices = variants.sizes
+						.filter((s: any) => typeof s === 'object' && s.price_cents)
+						.map((s: any) => s.price_cents);
+					if (validPrices.includes(item.price_cents)) {
+						priceCents = item.price_cents;
+					}
+				}
+			} catch { /* use default price */ }
+		}
+
 		return {
 			name: product.name + (item.variant ? ` (${item.variant})` : ''),
-			price_cents: product.price_cents,
+			price_cents: priceCents,
 			quantity: item.quantity
 		};
 	});
