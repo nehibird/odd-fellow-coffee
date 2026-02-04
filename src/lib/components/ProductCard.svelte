@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { cart } from './CartStore';
+	import { onMount } from 'svelte';
 
 	export let product: {
 		id: number;
@@ -24,22 +25,25 @@
 		return !!(v?.sizes?.length && typeof v.sizes[0] === 'object' && 'price_cents' in (v.sizes[0] as any));
 	}
 
-	$: if (product.variants) {
-		try {
-			variants = JSON.parse(product.variants);
-			if (variants?.sizes?.length) {
-				const hasPricing = checkHasSizePricing(variants);
-				if (hasPricing) {
-					selectedSize = (variants.sizes[0] as { name: string }).name;
-				} else {
-					selectedSize = variants.sizes[0] as string;
+	// Parse variants only once on mount
+	onMount(() => {
+		if (product.variants) {
+			try {
+				variants = JSON.parse(product.variants);
+				if (variants?.sizes?.length) {
+					const hasPricing = checkHasSizePricing(variants);
+					if (hasPricing) {
+						selectedSize = (variants.sizes[0] as { name: string }).name;
+					} else {
+						selectedSize = variants.sizes[0] as string;
+					}
 				}
-			}
-			if (variants?.grinds?.length) {
-				selectedGrind = variants.grinds[0];
-			}
-		} catch { variants = null; }
-	}
+				if (variants?.grinds?.length) {
+					selectedGrind = variants.grinds[0];
+				}
+			} catch { variants = null; }
+		}
+	});
 
 	// Check if current variants have pricing
 	$: hasSizePricing = checkHasSizePricing(variants);
