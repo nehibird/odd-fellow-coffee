@@ -40,6 +40,14 @@ Quick guide to find what you need in the project documentation.
 - Rollback procedures
 - Post-deployment task list
 
+**Master Project Status**: [PROJECT-STATUS-MASTER.md](./PROJECT-STATUS-MASTER.md)
+- Current project status overview
+- Deployment timeline and history
+- All completed work summaries
+- Known status (what's working, what's pending)
+- Next steps prioritized
+- Quality metrics and readiness
+
 **Current Session**: [SESSION-2026-02-04-PAYMENT-CONFIG.md](./SESSION-2026-02-04-PAYMENT-CONFIG.md)
 - Complete session overview (afternoon work)
 - Stripe webhook integration implemented
@@ -56,6 +64,20 @@ Quick guide to find what you need in the project documentation.
 - Site live verification
 - Stripe TEST keys confirmed
 - Payment flow testing prep
+
+---
+
+## For Owner Business Context
+
+**CRITICAL READING**: [OWNER-BUSINESS-CONTEXT-2026-02-04.md](./OWNER-BUSINESS-CONTEXT-2026-02-04.md)
+- Price floor constraints (minimum net after fees)
+- Why percentage discounts won't work
+- Subscription pricing strategy (operational savings only)
+- Font preferences and future design considerations
+- Owner feedback and approval status
+- Decision log for business decisions
+- What to remember for future feature work
+- Contact info and conversation notes
 
 ---
 
@@ -76,15 +98,16 @@ Quick guide to find what you need in the project documentation.
 
 | Document | Purpose | Audience | Length |
 |----------|---------|----------|--------|
-| **PROJECT-STATUS-MASTER.md** | Current project status & overview | Everyone | ~14 KB |
+| **PROJECT-STATUS-MASTER.md** | Current project status & overview | Everyone | ~17 KB |
 | **README.md** | Quick start & overview | Everyone | ~4 KB |
 | **PROJECT.md** | Full technical reference | Developers | ~21 KB |
 | **DEPLOYMENT-STATUS.md** | Deployment guide & checklist | DevOps/Deployers | ~13 KB |
+| **OWNER-BUSINESS-CONTEXT-2026-02-04.md** | **CRITICAL**: Price floors, constraints, feedback | Product team, Decision makers | ~9 KB |
 | **COMPLETION-SUMMARY.md** | Quick facts & summary | Project stakeholders | ~7 KB |
 | **SESSION-2026-02-04-PAYMENT-CONFIG.md** | Payment config & UX work (afternoon) | Development team | ~15 KB |
 | **SESSION-2026-02-04.md** | Documentation & verification (morning) | Development team | ~13 KB |
 | **SESSION-2026-02-02.md** | UI hardening work | Development team | ~12 KB |
-| **DOCUMENTATION-INDEX.md** | This file | Navigation | ~4 KB |
+| **DOCUMENTATION-INDEX.md** | This file | Navigation | ~5 KB |
 
 ---
 
@@ -118,6 +141,15 @@ Quick guide to find what you need in the project documentation.
 
 **...understand why a decision was made?**
 → PROJECT.md → Key Design Decisions
+
+**...know about the owner's business constraints?** 🚨 **IMPORTANT**
+→ OWNER-BUSINESS-CONTEXT-2026-02-04.md → All sections (CRITICAL for pricing/discount decisions)
+
+**...understand why percentage discounts won't work?**
+→ OWNER-BUSINESS-CONTEXT-2026-02-04.md → Subscription Pricing Strategy
+
+**...know what the owner approved?**
+→ OWNER-BUSINESS-CONTEXT-2026-02-04.md → Owner Feedback Summary
 
 ---
 
@@ -175,4 +207,4 @@ Refer to the relevant documentation file above, then:
 ---
 
 *Index created: 2026-01-31*
-*Last updated: 2026-02-04 (Added afternoon session: Stripe webhooks, coffee variants, mobile UX)*
+*Last updated: 2026-02-04 (Added OWNER-BUSINESS-CONTEXT; price floor constraints, subscription strategy, owner feedback)*

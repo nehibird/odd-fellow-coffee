@@ -359,6 +359,42 @@ docker-compose up -d
 
 ---
 
+## Owner Business Requirements (Deborah - 2026-02-04)
+
+**CRITICAL BUSINESS CONSTRAINT**: The listed prices are Deborah's FLOOR — the minimum she needs to NET after all payment processing fees (Stripe, shipping, etc.)
+
+### Price Floor Requirements
+
+| Product | Floor Price (Net) | Current Price | Built-In Fee Buffer |
+|---------|-------------------|---------------|---------------------|
+| Original Sourdough | $10.00 | $10.99 | $0.99 |
+| Triple Chocolate | $15.00 | $15.99 | $0.99 |
+| Coffee 8oz | $13.00 | $13.99 | $0.99 |
+| Coffee 16oz | $25.00 | $25.99 | $0.99 |
+
+**Implication for Subscription Discounts**:
+- NO percentage discounts allowed on subscriptions — would undercut the floor price
+- Stripe fees average 2.9% + $0.30 per transaction
+- The $0.99 buffer barely covers payment processing at volume
+- Any subscription discount must come from operational savings (e.g., free shipping), NOT price reduction
+- Before implementing any discount strategy, verify the math against Stripe fee estimates
+
+**Key Insight**: Even though the prices seem modest, Deborah's margin is tight. Do not propose percentage-off discounts without first calculating impact on her floor price.
+
+### Font Preferences
+
+- Deborah confirmed the website looks "good otherwise"
+- Current font treatment is acceptable (system defaults after rollback)
+- If future font changes needed: Deborah wants "better" fonts, "clear", NOT medieval
+- No specific font preference stated — would need to bring options for approval
+
+### Overall Feedback
+
+- "Nehemiah did it" — Approval of work completed to date
+- Site is ready for production launch once product images added
+
+---
+
 ## Stakeholder Information
 
 ### What's Live Now
@@ -465,23 +501,32 @@ The Odd Fellow Coffee e-commerce platform is a complete, feature-rich web applic
 - Mobile navigation implemented and responsive
 - Checkout simplified to single-step process
 
+**CRITICAL BUSINESS CONTEXT** (from owner conversation 2026-02-04):
+- Prices are FLOOR prices (Deborah's minimum net after fees)
+- NO percentage discounts allowed on subscriptions (would undercut floors)
+- $0.99 buffer per item barely covers Stripe processing fees
+- Any subscription discount must come from operational savings (e.g., free shipping), NOT price reduction
+- Font: Current system defaults acceptable; if changing, needs to be "clear" (not medieval), bring options
+- Owner approval: "Nehemiah did it" — satisfied with work to date
+
 **Documentation to Review**:
-1. `SESSION-2026-02-04-PAYMENT-CONFIG.md` — Today's work (detailed)
+1. `SESSION-2026-02-04-PAYMENT-CONFIG.md` — Latest work (detailed)
 2. `PROJECT-STATUS-MASTER.md` — This file (overall status)
 3. `DEPLOYMENT-STATUS.md` — Infrastructure details
 4. `PROJECT.md` — Technical architecture
+5. `OWNER-BUSINESS-CONTEXT-2026-02-04.md` — Owner requirements (NEW)
 
 **Important Contacts**:
 - VPS: 76.13.118.165 (SSH: root, credentials in HOSTING-MAP.md)
 - GitHub: https://github.com/nehibird/odd-fellow-coffee
-- Owner: Deborah (needs product images + approval before launch)
+- Owner: Deborah (approved current state, needs product images before launch)
 - Documentation: See DOCUMENTATION-INDEX.md
 
 **Critical Files & Credentials**:
 - Project root: `/Volumes/Media/Documents/Work/Birdherd Media/OddFellowCoffee/`
 - Credentials: `/Volumes/Media/Documents/Work/Hosting/HOSTING-MAP.md`
   - Contains: VPS SSH, Stripe TEST/Live keys, SMTP, admin password
-- Key docs: DEPLOYMENT-STATUS.md, PROJECT.md, SESSION-2026-02-04-PAYMENT-CONFIG.md
+- Key docs: DEPLOYMENT-STATUS.md, PROJECT.md, SESSION-2026-02-04-PAYMENT-CONFIG.md, OWNER-BUSINESS-CONTEXT-2026-02-04.md
 
 ---
 

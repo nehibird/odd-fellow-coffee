@@ -16,8 +16,11 @@ export async function POST({ request }) {
 	const product = db.prepare('SELECT * FROM products WHERE id = ? AND active = 1 AND subscribable = 1').get(productId) as any;
 	if (!product) throw error(400, 'Product not found or not subscribable');
 
+	// Subscription discount rate (10% off)
+	const SUB_DISCOUNT = 0.10;
+
 	// Validate variant price if provided
-	let finalPrice = product.price_cents;
+	let basePrice = product.price_cents;
 	if (price_cents && product.variants) {
 		try {
 			const variants = JSON.parse(product.variants);
@@ -26,13 +29,16 @@ export async function POST({ request }) {
 					.filter((s: any) => typeof s === 'object' && s.price_cents)
 					.map((s: any) => s.price_cents);
 				if (validPrices.includes(price_cents)) {
-					finalPrice = price_cents;
+					basePrice = price_cents;
 				}
 			}
 		} catch { /* use default price */ }
 	}
 
-	// Build product name with variant
+	// Apply subscription discount
+	const finalPrice = Math.round(basePrice * (1 - SUB_DISCOUNT));
+
+	// Build product name with variant and discount
 	const productName = variant ? `${product.name} (${variant})` : product.name;
 
 	const session = await createSubscriptionCheckout(

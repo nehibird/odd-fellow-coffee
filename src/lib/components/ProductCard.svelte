@@ -60,6 +60,10 @@
 	// Build variant string for cart (e.g., "8oz - Medium")
 	$: variantString = [selectedSize, selectedGrind].filter(Boolean).join(' - ') || undefined;
 
+	// Subscription discount (10% off)
+	const SUB_DISCOUNT = 0.10;
+	$: subPrice = Math.round(currentPrice * (1 - SUB_DISCOUNT));
+
 	let addedToCart = false;
 
 	function addToCart() {
@@ -176,19 +180,24 @@
 		{#if !showSubscribe}
 			<button
 				on:click={() => (showSubscribe = true)}
-				class="mt-2 w-full rounded-full border border-medium-carmine py-2 text-sm font-medium text-medium-carmine transition-colors hover:bg-medium-carmine hover:text-white"
+				class="mt-2 w-full rounded-full bg-medium-carmine py-2 text-sm font-medium text-white transition-colors hover:bg-black"
 			>
-				Subscribe
+				Subscribe & Save 10%
 			</button>
 		{:else}
-			<div class="mt-2 space-y-2 rounded-lg border bg-gray-50 p-3">
+			<div class="mt-2 space-y-2 rounded-lg border border-medium-carmine bg-red-50 p-3">
+				<div class="text-center">
+					<span class="text-sm text-gray-500 line-through">${(currentPrice / 100).toFixed(2)}</span>
+					<span class="ml-2 text-lg font-bold text-medium-carmine">${(subPrice / 100).toFixed(2)}</span>
+					<span class="ml-1 text-xs font-medium text-green-600">Save 10%</span>
+				</div>
 				{#if variantString}
-					<p class="text-xs text-gray-600">Subscribing to: <span class="font-medium">{variantString}</span> — ${(currentPrice / 100).toFixed(2)}/delivery</p>
+					<p class="text-center text-xs text-gray-600">{variantString}</p>
 				{/if}
 				<select bind:value={subFrequency} class="w-full rounded border px-2 py-1 text-sm">
-					<option value="weekly">Weekly — ${(currentPrice / 100).toFixed(2)}/week</option>
-					<option value="biweekly">Every 2 Weeks — ${(currentPrice / 100).toFixed(2)}/2 weeks</option>
-					<option value="monthly">Monthly — ${(currentPrice / 100).toFixed(2)}/month</option>
+					<option value="weekly">Weekly — ${(subPrice / 100).toFixed(2)}/week</option>
+					<option value="biweekly">Every 2 Weeks — ${(subPrice / 100).toFixed(2)}/2 weeks</option>
+					<option value="monthly">Monthly — ${(subPrice / 100).toFixed(2)}/month</option>
 				</select>
 				<input bind:value={subEmail} type="email" placeholder="Your email" class="w-full rounded border px-2 py-1 text-sm" />
 				{#if subError}<p class="text-xs text-red-500">{subError}</p>{/if}
@@ -197,9 +206,10 @@
 					disabled={subLoading}
 					class="w-full rounded-full bg-medium-carmine py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
 				>
-					{subLoading ? 'Processing...' : 'Subscribe with Stripe'}
+					{subLoading ? 'Processing...' : 'Start Subscription'}
 				</button>
-				<button on:click={() => (showSubscribe = false)} class="w-full text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+				<p class="text-center text-xs text-gray-500">Cancel anytime</p>
+				<button on:click={() => (showSubscribe = false)} class="w-full text-xs text-gray-400 hover:text-gray-600">Back</button>
 			</div>
 		{/if}
 	{/if}
