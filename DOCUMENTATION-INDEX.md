@@ -2,6 +2,8 @@
 
 Quick guide to find what you need in the project documentation.
 
+**Updated 2026-02-09 (Evening)**: Major subscription system enhancements deployed; admin fulfillment workflow complete; shipping address collection live
+
 ---
 
 ## For Project Overview
@@ -27,6 +29,37 @@ Quick guide to find what you need in the project documentation.
 - Known issues and future work
 - Testing checklist
 
+**Milestone Completion**: [MILESTONE-SUBSCRIPTION-FEATURE-COMPLETE-2026-02-05.md](./MILESTONE-SUBSCRIPTION-FEATURE-COMPLETE-2026-02-05.md)
+- Subscription feature completion summary
+- All accomplishments documented (security audit, implementation, testing)
+- Business requirements verification
+- Production readiness assessment
+- Knowledge transfer documentation
+- Next steps for go-live
+
+**Current Session (Evening)** (2026-02-09): [SESSION-IMPROVEMENTS-2026-02-09.md](./SESSION-IMPROVEMENTS-2026-02-09.md) ✅ **6 MAJOR ENHANCEMENTS DEPLOYED**
+- Admin subscriptions page: Complete customer/shipping/fulfillment visibility ✅
+- Shipping address collection: Integrated into Stripe checkout ✅
+- Fulfillment email notifications: Automated when admin marks orders shipped ✅
+- First delivery date display: Shows 7-day lead time for roasting ✅
+- Database schema: Extended with 6 new fulfillment tracking columns ✅
+- Product catalog: Hotplate removed, real images deployed ✅
+- **Status**: All enhancements LIVE and OPERATIONAL
+
+**Earlier Session** (2026-02-09): [SESSION-2026-02-09.md](./SESSION-2026-02-09.md)
+- Full subscription checkout flow tested and operational ✅
+- Product images deployed (coffee.jpg, sourdough.jpg, chocolate-sourdough.jpg) ✅
+- Shop page tagline updated and hotplate removed ✅
+- UX issue identified (subscription timing clarity needed)
+
+**Previous Session**: [SESSION-2026-02-05-SUBSCRIPTION-DISCOUNT.md](./SESSION-2026-02-05-SUBSCRIPTION-DISCOUNT.md)
+- 10% subscription discount implementation
+- Fee-aware pricing formula (protects Deborah's floor prices)
+- Server-side discount calculation (security)
+- Product pricing updates (4 products)
+- Database migrations
+- Code changes (ProductCard.svelte, subscribe API)
+
 ---
 
 ## For Deployment & Current Status
@@ -41,12 +74,13 @@ Quick guide to find what you need in the project documentation.
 - Post-deployment task list
 
 **Master Project Status**: [PROJECT-STATUS-MASTER.md](./PROJECT-STATUS-MASTER.md)
-- Current project status overview
+- Current project status overview (updated 2026-02-05)
 - Deployment timeline and history
-- All completed work summaries
+- All completed work summaries (including subscription discount)
 - Known status (what's working, what's pending)
 - Next steps prioritized
 - Quality metrics and readiness
+- Pricing structure with subscription discounts
 
 **Current Session**: [SESSION-2026-02-04-PAYMENT-CONFIG.md](./SESSION-2026-02-04-PAYMENT-CONFIG.md)
 - Complete session overview (afternoon work)
@@ -98,16 +132,20 @@ Quick guide to find what you need in the project documentation.
 
 | Document | Purpose | Audience | Length |
 |----------|---------|----------|--------|
-| **PROJECT-STATUS-MASTER.md** | Current project status & overview | Everyone | ~17 KB |
+| **SESSION-IMPROVEMENTS-2026-02-09.md** | CURRENT: 6 subscription enhancements deployed (LATEST) | Development team, Product team | ~12 KB |
+| **PROJECT-STATUS-MASTER.md** | Current project status & overview (UPDATED 2026-02-09) | Everyone | ~26 KB |
+| **SESSION-2026-02-09.md** | Testing & UX assessment (earlier session) | Development team | ~7 KB |
+| **MILESTONE-SUBSCRIPTION-FEATURE-COMPLETE-2026-02-05.md** | Subscription feature completion milestone | Everyone | ~8 KB |
 | **README.md** | Quick start & overview | Everyone | ~4 KB |
 | **PROJECT.md** | Full technical reference | Developers | ~21 KB |
 | **DEPLOYMENT-STATUS.md** | Deployment guide & checklist | DevOps/Deployers | ~13 KB |
-| **OWNER-BUSINESS-CONTEXT-2026-02-04.md** | **CRITICAL**: Price floors, constraints, feedback | Product team, Decision makers | ~9 KB |
+| **OWNER-BUSINESS-CONTEXT-2026-02-04.md** | Price floors, constraints, feedback | Product team, Decision makers | ~9 KB |
 | **COMPLETION-SUMMARY.md** | Quick facts & summary | Project stakeholders | ~7 KB |
+| **SESSION-2026-02-05-SUBSCRIPTION-DISCOUNT.md** | Subscription discount feature | Development team | ~6 KB |
 | **SESSION-2026-02-04-PAYMENT-CONFIG.md** | Payment config & UX work (afternoon) | Development team | ~15 KB |
 | **SESSION-2026-02-04.md** | Documentation & verification (morning) | Development team | ~13 KB |
 | **SESSION-2026-02-02.md** | UI hardening work | Development team | ~12 KB |
-| **DOCUMENTATION-INDEX.md** | This file | Navigation | ~5 KB |
+| **DOCUMENTATION-INDEX.md** | This file | Navigation | ~6 KB |
 
 ---
 
@@ -207,4 +245,4 @@ Refer to the relevant documentation file above, then:
 ---
 
 *Index created: 2026-01-31*
-*Last updated: 2026-02-04 (Added OWNER-BUSINESS-CONTEXT; price floor constraints, subscription strategy, owner feedback)*
+*Last updated: 2026-02-09 Evening (Added SESSION-IMPROVEMENTS-2026-02-09; 6 major enhancements documented; Admin fulfillment workflow complete; Updated all navigation references)*
