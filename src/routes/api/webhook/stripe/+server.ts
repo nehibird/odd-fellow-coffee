@@ -58,10 +58,16 @@ export async function POST({ request }) {
 					});
 				}
 
-				// First delivery is within 2 business days (not the next interval)
+				// First delivery follows subscription frequency (gives time to roast)
 				const now = new Date();
 				let nextDelivery = new Date(now);
-				nextDelivery.setDate(nextDelivery.getDate() + 2); // First delivery in ~2 days
+				if (frequency === 'weekly') {
+					nextDelivery.setDate(nextDelivery.getDate() + 7);
+				} else if (frequency === 'biweekly') {
+					nextDelivery.setDate(nextDelivery.getDate() + 14);
+				} else {
+					nextDelivery.setMonth(nextDelivery.getMonth() + 1);
+				}
 
 				db.prepare(
 					`INSERT INTO subscriptions (stripe_subscription_id, customer_email, product_id, frequency, status, stripe_price_id, current_period_end, variant, price_cents, shipping_name, shipping_address, next_delivery_date)
