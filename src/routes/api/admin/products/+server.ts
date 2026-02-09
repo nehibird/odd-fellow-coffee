@@ -2,7 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import { isAuthenticated } from '$lib/server/auth';
 import { getDb } from '$lib/server/db';
 
-const VALID_CATEGORIES = new Set(['coffee', 'bakery', 'merchandise']);
+const VALID_CATEGORIES = new Set(['coffee', 'bakery']);
 const MAX_NAME_LENGTH = 100;
 const MAX_DESCRIPTION_LENGTH = 500;
 

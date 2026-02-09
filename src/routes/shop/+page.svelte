@@ -4,7 +4,7 @@
 
 	let products: any[] = [];
 	let activeCategory = 'all';
-	const categories = ['all', 'coffee', 'bakery', 'hotplate'];
+	const categories = ['all', 'coffee', 'bakery'];
 
 	onMount(async () => {
 		const res = await fetch('/api/products');
@@ -22,7 +22,7 @@
 	<h1 class="text-4xl">
 		<span class="text-medium-carmine">S</span>hop
 	</h1>
-	<p class="mt-2 text-gray-600">Fresh roasted coffee, homemade bread, and hot plates — order for pickup.</p>
+	<p class="mt-2 text-gray-600">Fresh roasted coffee and homemade sourdough — order for pickup or subscribe.</p>
 
 	<div class="mt-6 flex gap-3">
 		{#each categories as cat}
