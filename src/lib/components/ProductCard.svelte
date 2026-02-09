@@ -87,16 +87,10 @@
 	let subLoading = false;
 	let subError = '';
 
-	// Calculate estimated first delivery date based on frequency
+	// First delivery is always ~1 week out (for roasting), regardless of frequency
 	$: estimatedDelivery = (() => {
 		const date = new Date();
-		if (subFrequency === 'weekly') {
-			date.setDate(date.getDate() + 7);
-		} else if (subFrequency === 'biweekly') {
-			date.setDate(date.getDate() + 14);
-		} else {
-			date.setMonth(date.getMonth() + 1);
-		}
+		date.setDate(date.getDate() + 7);
 		return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 	})();
 
