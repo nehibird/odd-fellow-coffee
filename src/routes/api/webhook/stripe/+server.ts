@@ -58,16 +58,10 @@ export async function POST({ request }) {
 					});
 				}
 
-				// First delivery follows subscription frequency (gives time to roast)
+				// First delivery is always ~1 week out (for roasting), regardless of frequency
 				const now = new Date();
 				let nextDelivery = new Date(now);
-				if (frequency === 'weekly') {
-					nextDelivery.setDate(nextDelivery.getDate() + 7);
-				} else if (frequency === 'biweekly') {
-					nextDelivery.setDate(nextDelivery.getDate() + 14);
-				} else {
-					nextDelivery.setMonth(nextDelivery.getMonth() + 1);
-				}
+				nextDelivery.setDate(nextDelivery.getDate() + 7);
 
 				db.prepare(
 					`INSERT INTO subscriptions (stripe_subscription_id, customer_email, product_id, frequency, status, stripe_price_id, current_period_end, variant, price_cents, shipping_name, shipping_address, next_delivery_date)
