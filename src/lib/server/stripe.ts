@@ -110,6 +110,30 @@ export async function createSubscriptionCheckout(
 		success_url: successUrl,
 		cancel_url: cancelUrl,
 		shipping_address_collection: { allowed_countries: ['US'] },
+		shipping_options: [
+			{
+				shipping_rate_data: {
+					type: 'fixed_amount',
+					fixed_amount: { amount: 0, currency: 'usd' },
+					display_name: 'Free Local Delivery (Tonkawa, OK 74653 area)',
+					delivery_estimate: {
+						minimum: { unit: 'business_day', value: 1 },
+						maximum: { unit: 'business_day', value: 2 }
+					}
+				}
+			},
+			{
+				shipping_rate_data: {
+					type: 'fixed_amount',
+					fixed_amount: { amount: 599, currency: 'usd' },
+					display_name: 'Flat Rate Shipping (USPS, 3-5 business days)',
+					delivery_estimate: {
+						minimum: { unit: 'business_day', value: 3 },
+						maximum: { unit: 'business_day', value: 5 }
+					}
+				}
+			}
+		],
 		metadata: {
 			product_id: String(productId),
 			frequency,
