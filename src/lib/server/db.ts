@@ -37,7 +37,14 @@ function initSchema() {
 		'ALTER TABLE orders ADD COLUMN shipping_name TEXT',
 		'ALTER TABLE orders ADD COLUMN shipping_address TEXT',
 		'ALTER TABLE orders ADD COLUMN shipping_method TEXT',
-		'ALTER TABLE orders ADD COLUMN shipping_cents INTEGER DEFAULT 0'
+		'ALTER TABLE orders ADD COLUMN shipping_cents INTEGER DEFAULT 0',
+		// Subscription fulfillment fields
+		'ALTER TABLE subscriptions ADD COLUMN variant TEXT',
+		'ALTER TABLE subscriptions ADD COLUMN price_cents INTEGER',
+		'ALTER TABLE subscriptions ADD COLUMN shipping_name TEXT',
+		'ALTER TABLE subscriptions ADD COLUMN shipping_address TEXT',
+		'ALTER TABLE subscriptions ADD COLUMN next_delivery_date TEXT',
+		'ALTER TABLE subscriptions ADD COLUMN last_fulfilled_at TEXT'
 	];
 	for (const stmt of alterStatements) {
 		try { db.exec(stmt); } catch { /* column already exists */ }
@@ -107,6 +114,12 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   stripe_price_id TEXT,
   current_period_end TEXT,
   cancel_at_period_end INTEGER DEFAULT 0,
+  variant TEXT,
+  price_cents INTEGER,
+  shipping_name TEXT,
+  shipping_address TEXT,
+  next_delivery_date TEXT,
+  last_fulfilled_at TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS drops (

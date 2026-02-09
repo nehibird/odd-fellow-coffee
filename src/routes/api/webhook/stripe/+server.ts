@@ -26,6 +26,8 @@ export async function POST({ request }) {
 		if (session.mode === 'subscription') {
 			const productId = session.metadata?.product_id;
 			const frequency = session.metadata?.frequency;
+			const variant = session.metadata?.variant || null;
+			const priceCents = session.metadata?.price_cents ? Number(session.metadata.price_cents) : null;
 			const subId = session.subscription;
 
 			// Verify product_id references an actual product in our DB
@@ -39,9 +41,37 @@ export async function POST({ request }) {
 
 			if (subId) {
 				const stripeSub = await stripe.subscriptions.retrieve(subId as string);
+
+				// Extract shipping info
+				const shipping = session.shipping_details;
+				let shippingName = null;
+				let shippingAddress = null;
+				if (shipping?.address) {
+					shippingName = shipping.name || '';
+					shippingAddress = JSON.stringify({
+						line1: shipping.address.line1,
+						line2: shipping.address.line2 || '',
+						city: shipping.address.city,
+						state: shipping.address.state,
+						postal_code: shipping.address.postal_code,
+						country: shipping.address.country
+					});
+				}
+
+				// Calculate next delivery date based on frequency
+				const now = new Date();
+				let nextDelivery = new Date(now);
+				if (frequency === 'weekly') {
+					nextDelivery.setDate(nextDelivery.getDate() + 7);
+				} else if (frequency === 'biweekly') {
+					nextDelivery.setDate(nextDelivery.getDate() + 14);
+				} else {
+					nextDelivery.setMonth(nextDelivery.getMonth() + 1);
+				}
+
 				db.prepare(
-					`INSERT INTO subscriptions (stripe_subscription_id, customer_email, product_id, frequency, status, stripe_price_id, current_period_end)
-					 VALUES (?,?,?,?,?,?,?)`
+					`INSERT INTO subscriptions (stripe_subscription_id, customer_email, product_id, frequency, status, stripe_price_id, current_period_end, variant, price_cents, shipping_name, shipping_address, next_delivery_date)
+					 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
 				).run(
 					stripeSub.id,
 					session.customer_email,
@@ -49,7 +79,12 @@ export async function POST({ request }) {
 					frequency || null,
 					stripeSub.status,
 					stripeSub.items.data[0]?.price?.id || null,
-					new Date(stripeSub.current_period_end * 1000).toISOString()
+					new Date(stripeSub.current_period_end * 1000).toISOString(),
+					variant,
+					priceCents,
+					shippingName,
+					shippingAddress,
+					nextDelivery.toISOString().split('T')[0]
 				);
 			}
 		} else {

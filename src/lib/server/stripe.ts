@@ -109,10 +109,12 @@ export async function createSubscriptionCheckout(
 		customer_email: customerEmail,
 		success_url: successUrl,
 		cancel_url: cancelUrl,
+		shipping_address_collection: { allowed_countries: ['US'] },
 		metadata: {
 			product_id: String(productId),
 			frequency,
-			variant: variant || ''
+			variant: variant || '',
+			price_cents: String(priceCents)
 		}
 	});
 }

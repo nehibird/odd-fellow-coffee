@@ -97,8 +97,7 @@
 			<select bind:value={form.category} class="w-full rounded border px-3 py-2">
 				<option value="coffee">Coffee</option>
 				<option value="bakery">Bakery</option>
-				<option value="hotplate">Hot Plate</option>
-			</select>
+							</select>
 			<input bind:value={form.description} placeholder="Description" class="w-full rounded border px-3 py-2" />
 			<input type="number" bind:value={form.price_cents} placeholder="Price (cents)" class="w-full rounded border px-3 py-2" />
 			<input bind:value={form.variants} placeholder='Variants JSON (optional)' class="w-full rounded border px-3 py-2" />
