@@ -56,3 +56,24 @@ export async function sendReservationConfirmation(
 		`
 	});
 }
+
+export async function sendSubscriptionFulfilled(
+	email: string,
+	productName: string,
+	variant: string | null,
+	nextDeliveryDate: string
+) {
+	const variantText = variant ? ` (${esc(variant)})` : '';
+	await transporter.sendMail({
+		from: FROM_EMAIL,
+		to: email,
+		subject: 'Odd Fellow Coffee - Your Order Is On Its Way!',
+		html: `
+			<h2>Great news!</h2>
+			<p>Your subscription order for <strong>${esc(productName)}${variantText}</strong> has been shipped!</p>
+			<p>Your next delivery is scheduled for <strong>${esc(nextDeliveryDate)}</strong>.</p>
+			<p>Thank you for being a subscriber!</p>
+			<p>- Odd Fellow Coffee Roasters</p>
+		`
+	});
+}

@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { isAuthenticated } from '$lib/server/auth';
 import { getDb } from '$lib/server/db';
+import { sendSubscriptionFulfilled } from '$lib/server/email';
 
 export function GET({ cookies }) {
 	if (!isAuthenticated(cookies)) throw error(401, 'Unauthorized');
@@ -34,11 +35,24 @@ export async function PATCH({ request, cookies }) {
 			nextDelivery.setMonth(nextDelivery.getMonth() + 1);
 		}
 
+		const nextDeliveryStr = nextDelivery.toISOString().split('T')[0];
+
 		db.prepare(
 			'UPDATE subscriptions SET last_fulfilled_at = ?, next_delivery_date = ? WHERE id = ?'
-		).run(now.toISOString(), nextDelivery.toISOString().split('T')[0], id);
+		).run(now.toISOString(), nextDeliveryStr, id);
 
-		return json({ ok: true, next_delivery_date: nextDelivery.toISOString().split('T')[0] });
+		// Get product name and send fulfillment email
+		const product = db.prepare('SELECT name FROM products WHERE id = ?').get(sub.product_id) as { name: string } | undefined;
+		const productName = product?.name || 'Subscription Item';
+		const formattedDate = nextDelivery.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+		try {
+			await sendSubscriptionFulfilled(sub.customer_email, productName, sub.variant, formattedDate);
+		} catch (e) {
+			console.error('Failed to send fulfillment email:', e);
+		}
+
+		return json({ ok: true, next_delivery_date: nextDeliveryStr });
 	}
 
 	throw error(400, 'Unknown action');
