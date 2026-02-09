@@ -87,6 +87,19 @@
 	let subLoading = false;
 	let subError = '';
 
+	// Calculate estimated first delivery date based on frequency
+	$: estimatedDelivery = (() => {
+		const date = new Date();
+		if (subFrequency === 'weekly') {
+			date.setDate(date.getDate() + 7);
+		} else if (subFrequency === 'biweekly') {
+			date.setDate(date.getDate() + 14);
+		} else {
+			date.setMonth(date.getMonth() + 1);
+		}
+		return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+	})();
+
 	async function subscribe() {
 		if (!subEmail) { subError = 'Email required'; return; }
 		subLoading = true;
@@ -201,6 +214,9 @@
 				</select>
 				<input bind:value={subEmail} type="email" placeholder="Your email" class="w-full rounded border px-2 py-1 text-sm" />
 				{#if subError}<p class="text-xs text-red-500">{subError}</p>{/if}
+				<p class="rounded bg-white px-2 py-1.5 text-center text-xs text-gray-700">
+					First delivery: <span class="font-semibold">{estimatedDelivery}</span>
+				</p>
 				<button
 					on:click={subscribe}
 					disabled={subLoading}
