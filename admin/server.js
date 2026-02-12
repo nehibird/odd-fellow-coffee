@@ -41,8 +41,7 @@ app.use(session({
     maxAge: 8 * 60 * 60 * 1000,
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production' && process.env.SECURE_COOKIES === 'true',
-    path: BASE ? BASE + '/' : '/'
+    secure: process.env.NODE_ENV === 'production' && process.env.SECURE_COOKIES === 'true'
   }
 }));
 
