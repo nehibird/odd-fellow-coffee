@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../lib/db.js';
+import { upload } from '../lib/upload.js';
 
 const BASE = process.env.BASE_PATH?.replace(/\/+$/, '') || '';
 const router = Router();
@@ -25,7 +26,7 @@ router.get('/:id/edit', (req, res) => {
   res.render('products/form', { title: 'Edit Product', product });
 });
 
-router.post('/', (req, res) => {
+router.post('/', upload.single('imageFile'), (req, res) => {
   const { name, category, description, price, variants, image, subscribable } = req.body;
 
   if (!name || !name.trim()) {
@@ -49,16 +50,19 @@ router.post('/', (req, res) => {
     }
   }
 
+  // Use uploaded file if present, otherwise fall back to text field
+  const imageValue = req.file ? req.file.filename : (image?.trim() || null);
+
   const db = getDb();
   db.prepare(
     'INSERT INTO products (name, category, description, price_cents, variants, subscribable, image) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).run(name.trim(), category, (description || '').trim(), priceCents, variants?.trim() || null, subscribable ? 1 : 0, image?.trim() || null);
+  ).run(name.trim(), category, (description || '').trim(), priceCents, variants?.trim() || null, subscribable ? 1 : 0, imageValue);
 
   res.flash('success', `Product "${name.trim()}" created.`);
   res.redirect(BASE + '/products');
 });
 
-router.post('/:id', (req, res) => {
+router.post('/:id', upload.single('imageFile'), (req, res) => {
   const { name, category, description, price, variants, image, subscribable } = req.body;
 
   if (!name || !name.trim()) {
@@ -82,10 +86,13 @@ router.post('/:id', (req, res) => {
     }
   }
 
+  // Use uploaded file if present, otherwise keep existing text value
+  const imageValue = req.file ? req.file.filename : (image?.trim() || null);
+
   const db = getDb();
   db.prepare(
     'UPDATE products SET name=?, category=?, description=?, price_cents=?, variants=?, subscribable=?, image=? WHERE id=?'
-  ).run(name.trim(), category, (description || '').trim(), priceCents, variants?.trim() || null, subscribable ? 1 : 0, image?.trim() || null, req.params.id);
+  ).run(name.trim(), category, (description || '').trim(), priceCents, variants?.trim() || null, subscribable ? 1 : 0, imageValue, req.params.id);
 
   res.flash('success', `Product "${name.trim()}" updated.`);
   res.redirect(BASE + '/products');
