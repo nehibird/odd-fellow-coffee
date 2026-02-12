@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDb } from '../lib/db.js';
 
+const BASE = process.env.BASE_PATH?.replace(/\/+$/, '') || '';
 const router = Router();
 
 const VALID_DROP_STATUSES = new Set(['scheduled', 'live', 'sold_out', 'closed']);
@@ -29,11 +30,11 @@ router.post('/', (req, res) => {
 
   if (!title || !title.trim()) {
     res.flash('error', 'Title is required.');
-    return res.redirect('/drops/new');
+    return res.redirect(BASE + '/drops/new');
   }
   if (!drop_date || !opens_at) {
     res.flash('error', 'Drop date and opens_at time are required.');
-    return res.redirect('/drops/new');
+    return res.redirect(BASE + '/drops/new');
   }
 
   // Parse items from form - items come as arrays: product_id[], quantity[], price_override[]
@@ -56,7 +57,7 @@ router.post('/', (req, res) => {
 
   if (items.length === 0) {
     res.flash('error', 'At least one item is required.');
-    return res.redirect('/drops/new');
+    return res.redirect(BASE + '/drops/new');
   }
 
   const db = getDb();
@@ -76,26 +77,26 @@ router.post('/', (req, res) => {
 
   const dropId = insert();
   res.flash('success', `Drop "${title.trim()}" created (ID: ${dropId}).`);
-  res.redirect('/drops');
+  res.redirect(BASE + '/drops');
 });
 
 router.post('/:id/close', (req, res) => {
   const db = getDb();
   db.prepare("UPDATE drops SET status = 'closed' WHERE id = ?").run(req.params.id);
   res.flash('success', 'Drop closed.');
-  res.redirect('/drops');
+  res.redirect(BASE + '/drops');
 });
 
 router.post('/:id/status', (req, res) => {
   const { status } = req.body;
   if (!VALID_DROP_STATUSES.has(status)) {
     res.flash('error', 'Invalid status.');
-    return res.redirect('/drops');
+    return res.redirect(BASE + '/drops');
   }
   const db = getDb();
   db.prepare('UPDATE drops SET status = ? WHERE id = ?').run(status, req.params.id);
   res.flash('success', `Drop status updated to ${status}.`);
-  res.redirect('/drops');
+  res.redirect(BASE + '/drops');
 });
 
 export default router;

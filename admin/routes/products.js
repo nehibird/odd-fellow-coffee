@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDb } from '../lib/db.js';
 
+const BASE = process.env.BASE_PATH?.replace(/\/+$/, '') || '';
 const router = Router();
 const VALID_CATEGORIES = new Set(['coffee', 'bakery', 'hotplate']);
 
@@ -19,7 +20,7 @@ router.get('/:id/edit', (req, res) => {
   const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   if (!product) {
     res.flash('error', 'Product not found.');
-    return res.redirect('/products');
+    return res.redirect(BASE + '/products');
   }
   res.render('products/form', { title: 'Edit Product', product });
 });
@@ -29,22 +30,22 @@ router.post('/', (req, res) => {
 
   if (!name || !name.trim()) {
     res.flash('error', 'Name is required.');
-    return res.redirect('/products/new');
+    return res.redirect(BASE + '/products/new');
   }
   if (!VALID_CATEGORIES.has(category)) {
     res.flash('error', 'Invalid category.');
-    return res.redirect('/products/new');
+    return res.redirect(BASE + '/products/new');
   }
   const priceCents = Math.round(parseFloat(price) * 100);
   if (isNaN(priceCents) || priceCents < 0) {
     res.flash('error', 'Price must be a positive number.');
-    return res.redirect('/products/new');
+    return res.redirect(BASE + '/products/new');
   }
 
   if (variants && variants.trim()) {
     try { JSON.parse(variants); } catch {
       res.flash('error', 'Variants must be valid JSON.');
-      return res.redirect('/products/new');
+      return res.redirect(BASE + '/products/new');
     }
   }
 
@@ -54,7 +55,7 @@ router.post('/', (req, res) => {
   ).run(name.trim(), category, (description || '').trim(), priceCents, variants?.trim() || null, subscribable ? 1 : 0, image?.trim() || null);
 
   res.flash('success', `Product "${name.trim()}" created.`);
-  res.redirect('/products');
+  res.redirect(BASE + '/products');
 });
 
 router.post('/:id', (req, res) => {
@@ -62,22 +63,22 @@ router.post('/:id', (req, res) => {
 
   if (!name || !name.trim()) {
     res.flash('error', 'Name is required.');
-    return res.redirect(`/products/${req.params.id}/edit`);
+    return res.redirect(`${BASE}/products/${req.params.id}/edit`);
   }
   if (!VALID_CATEGORIES.has(category)) {
     res.flash('error', 'Invalid category.');
-    return res.redirect(`/products/${req.params.id}/edit`);
+    return res.redirect(`${BASE}/products/${req.params.id}/edit`);
   }
   const priceCents = Math.round(parseFloat(price) * 100);
   if (isNaN(priceCents) || priceCents < 0) {
     res.flash('error', 'Price must be a positive number.');
-    return res.redirect(`/products/${req.params.id}/edit`);
+    return res.redirect(`${BASE}/products/${req.params.id}/edit`);
   }
 
   if (variants && variants.trim()) {
     try { JSON.parse(variants); } catch {
       res.flash('error', 'Variants must be valid JSON.');
-      return res.redirect(`/products/${req.params.id}/edit`);
+      return res.redirect(`${BASE}/products/${req.params.id}/edit`);
     }
   }
 
@@ -87,21 +88,21 @@ router.post('/:id', (req, res) => {
   ).run(name.trim(), category, (description || '').trim(), priceCents, variants?.trim() || null, subscribable ? 1 : 0, image?.trim() || null, req.params.id);
 
   res.flash('success', `Product "${name.trim()}" updated.`);
-  res.redirect('/products');
+  res.redirect(BASE + '/products');
 });
 
 router.post('/:id/deactivate', (req, res) => {
   const db = getDb();
   db.prepare('UPDATE products SET active = 0 WHERE id = ?').run(req.params.id);
   res.flash('success', `Product deactivated.`);
-  res.redirect('/products');
+  res.redirect(BASE + '/products');
 });
 
 router.post('/:id/activate', (req, res) => {
   const db = getDb();
   db.prepare('UPDATE products SET active = 1 WHERE id = ?').run(req.params.id);
   res.flash('success', `Product activated.`);
-  res.redirect('/products');
+  res.redirect(BASE + '/products');
 });
 
 export default router;

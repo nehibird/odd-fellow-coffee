@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getDb } from '../lib/db.js';
 import { generatePirateshipCSV } from '../lib/csv.js';
 
+const BASE = process.env.BASE_PATH?.replace(/\/+$/, '') || '';
 const router = Router();
 
 const VALID_STATUSES = new Set(['pending', 'confirmed', 'fulfilled']);
@@ -25,24 +26,24 @@ router.post('/:id/status', (req, res) => {
   const { status } = req.body;
   if (!VALID_STATUSES.has(status)) {
     res.flash('error', 'Invalid status.');
-    return res.redirect('/orders');
+    return res.redirect(BASE + '/orders');
   }
   const db = getDb();
   db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, req.params.id);
   res.flash('success', `Order #${req.params.id} marked as ${status}.`);
-  res.redirect('/orders');
+  res.redirect(BASE + '/orders');
 });
 
 router.post('/:id/stage', (req, res) => {
   const { stage } = req.body;
   if (!VALID_STAGES.has(stage)) {
     res.flash('error', 'Invalid stage.');
-    return res.redirect('/orders');
+    return res.redirect(BASE + '/orders');
   }
   const db = getDb();
   db.prepare('UPDATE orders SET stage = ? WHERE id = ?').run(stage, req.params.id);
   res.flash('success', `Order #${req.params.id} moved to ${stage.replace(/_/g, ' ')}.`);
-  res.redirect('/orders');
+  res.redirect(BASE + '/orders');
 });
 
 router.get('/export-csv', (req, res) => {

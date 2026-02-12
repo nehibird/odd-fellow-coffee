@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDb } from '../lib/db.js';
 
+const BASE = process.env.BASE_PATH?.replace(/\/+$/, '') || '';
 const router = Router();
 
 router.get('/', (req, res) => {
@@ -17,19 +18,19 @@ router.post('/', (req, res) => {
 
   if (isNaN(day) || day < 0 || day > 6) {
     res.flash('error', 'Invalid day of week.');
-    return res.redirect('/slots');
+    return res.redirect(BASE + '/slots');
   }
   if (!start_time || !end_time) {
     res.flash('error', 'Start and end times are required.');
-    return res.redirect('/slots');
+    return res.redirect(BASE + '/slots');
   }
   if (start_time >= end_time) {
     res.flash('error', 'Start time must be before end time.');
-    return res.redirect('/slots');
+    return res.redirect(BASE + '/slots');
   }
   if (isNaN(cap) || cap < 1) {
     res.flash('error', 'Capacity must be at least 1.');
-    return res.redirect('/slots');
+    return res.redirect(BASE + '/slots');
   }
 
   const db = getDb();
@@ -37,14 +38,14 @@ router.post('/', (req, res) => {
     .run(day, start_time, end_time, cap);
 
   res.flash('success', 'Time slot added.');
-  res.redirect('/slots');
+  res.redirect(BASE + '/slots');
 });
 
 router.post('/:id/delete', (req, res) => {
   const db = getDb();
   db.prepare('DELETE FROM time_slots WHERE id = ?').run(req.params.id);
   res.flash('success', 'Time slot removed.');
-  res.redirect('/slots');
+  res.redirect(BASE + '/slots');
 });
 
 export default router;

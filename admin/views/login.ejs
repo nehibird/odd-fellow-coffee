@@ -20,7 +20,7 @@
         <% if (typeof error !== 'undefined' && error) { %>
           <div class="alert alert-danger py-2"><%= error %></div>
         <% } %>
-        <form method="POST" action="/login">
+        <form method="POST" action="<%= base %>/login">
           <div class="mb-3">
             <label class="form-label" for="username">Username</label>
             <input type="text" name="username" id="username" class="form-control" required autofocus>
