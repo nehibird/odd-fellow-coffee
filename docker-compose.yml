@@ -18,6 +18,7 @@ services:
     environment:
       - DB_PATH=/app/data/odd-fellow.db
       - ADMIN_PORT=3201
+      - BASE_PATH=/ofc-admin
     volumes:
       - ./data:/app/data
     restart: unless-stopped
