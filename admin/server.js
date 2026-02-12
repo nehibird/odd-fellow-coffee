@@ -31,6 +31,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(join(__dirname, 'public')));
+// Serve uploaded images for admin preview (/app/uploads in Docker)
+app.use('/uploads', express.static(join(__dirname, 'uploads')));
 
 app.use(session({
   store: createSessionStore(db),

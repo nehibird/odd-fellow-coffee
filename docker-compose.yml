@@ -8,6 +8,7 @@ services:
       - DB_PATH=/app/data/odd-fellow.db
     volumes:
       - ./data:/app/data
+      - ./uploads:/app/uploads
     restart: unless-stopped
 
   admin:
@@ -21,6 +22,7 @@ services:
       - BASE_PATH=/admin
     volumes:
       - ./data:/app/data
+      - ./uploads:/app/uploads
     restart: unless-stopped
     depends_on:
       - web
