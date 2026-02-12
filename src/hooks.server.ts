@@ -81,7 +81,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 	response.headers.set(
 		'Content-Security-Policy',
-		"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://checkout.stripe.com; frame-src https://checkout.stripe.com"
+		"default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://checkout.stripe.com https://cloudflareinsights.com; frame-src https://checkout.stripe.com"
 	);
 
 	return response;
