@@ -1,0 +1,81 @@
+<%- include('header') %>
+
+<h2 class="mb-4">Dashboard</h2>
+
+<div class="row g-3">
+  <div class="col-sm-6 col-lg-3">
+    <a href="/orders?status=pending" class="text-decoration-none">
+      <div class="card border-warning h-100">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted mb-2">Pending Orders</h6>
+          <h2 class="text-warning mb-0"><%= counts.pendingOrders %></h2>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <a href="/orders?status=confirmed" class="text-decoration-none">
+      <div class="card border-primary h-100">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted mb-2">Confirmed Orders</h6>
+          <h2 class="text-primary mb-0"><%= counts.confirmedOrders %></h2>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <a href="/orders" class="text-decoration-none">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted mb-2">Total Orders</h6>
+          <h2 class="mb-0"><%= counts.totalOrders %></h2>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <a href="/products" class="text-decoration-none">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted mb-2">Active Products</h6>
+          <h2 class="mb-0"><%= counts.activeProducts %></h2>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <a href="/subscriptions" class="text-decoration-none">
+      <div class="card <%= counts.overdueSubscriptions > 0 ? 'border-danger' : '' %> h-100">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted mb-2">Active Subscriptions</h6>
+          <h2 class="mb-0"><%= counts.activeSubscriptions %></h2>
+          <% if (counts.overdueSubscriptions > 0) { %>
+            <span class="badge bg-danger mt-1"><%= counts.overdueSubscriptions %> overdue</span>
+          <% } %>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <a href="/reservations" class="text-decoration-none">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted mb-2">Upcoming Reservations</h6>
+          <h2 class="mb-0"><%= counts.upcomingReservations %></h2>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <a href="/drops" class="text-decoration-none">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted mb-2">Active Drops</h6>
+          <h2 class="mb-0"><%= counts.activeDrops %></h2>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<%- include('footer') %>

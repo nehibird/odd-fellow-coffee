@@ -1,0 +1,107 @@
+<%- include('../header') %>
+
+<div class="mb-3">
+  <a href="/drops" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i> Back to Drops</a>
+</div>
+
+<h2 class="mb-4">New Drop</h2>
+
+<div class="card" style="max-width: 700px;">
+  <div class="card-body">
+    <form method="POST" action="/drops" id="drop-form">
+      <div class="mb-3">
+        <label class="form-label" for="title">Title <span class="text-danger">*</span></label>
+        <input type="text" name="title" id="title" class="form-control" required placeholder="e.g. Valentine's Day Special">
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label" for="drop_date">Drop Date <span class="text-danger">*</span></label>
+          <input type="date" name="drop_date" id="drop_date" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="opens_at">Opens At <span class="text-danger">*</span></label>
+          <input type="datetime-local" name="opens_at" id="opens_at" class="form-control" required>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label class="form-label" for="closes_at">Closes At</label>
+          <input type="datetime-local" name="closes_at" id="closes_at" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="pickup_start">Pickup Start</label>
+          <input type="datetime-local" name="pickup_start" id="pickup_start" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="pickup_end">Pickup End</label>
+          <input type="datetime-local" name="pickup_end" id="pickup_end" class="form-control">
+        </div>
+      </div>
+
+      <hr>
+      <h6 class="mb-3">Items <span class="text-danger">*</span></h6>
+
+      <div id="items-container">
+        <div class="item-row row g-2 align-items-end mb-2">
+          <div class="col-md-5">
+            <label class="form-label">Product</label>
+            <select name="product_id[]" class="form-select" required>
+              <option value="">Select product...</option>
+              <% products.forEach(p => { %>
+                <option value="<%= p.id %>"><%= p.name %> (<%= helpers.formatCents(p.price_cents) %>)</option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Quantity</label>
+            <input type="number" name="quantity[]" class="form-control" min="1" required value="10">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Price Override ($)</label>
+            <input type="number" name="price_override[]" class="form-control" step="0.01" min="0" placeholder="Optional">
+          </div>
+          <div class="col-md-1">
+            <button type="button" class="btn btn-outline-danger btn-sm remove-item" title="Remove">&times;</button>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="add-item">
+        <i class="bi bi-plus me-1"></i> Add Item
+      </button>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-dark">Create Drop</button>
+        <a href="/drops" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const container = document.getElementById('items-container');
+  const addBtn = document.getElementById('add-item');
+  const template = container.querySelector('.item-row').cloneNode(true);
+
+  addBtn.addEventListener('click', () => {
+    const row = template.cloneNode(true);
+    row.querySelectorAll('input').forEach(i => i.value = i.type === 'number' && i.name === 'quantity[]' ? '10' : '');
+    row.querySelector('select').selectedIndex = 0;
+    container.appendChild(row);
+    attachRemove(row);
+  });
+
+  function attachRemove(row) {
+    row.querySelector('.remove-item').addEventListener('click', () => {
+      if (container.querySelectorAll('.item-row').length > 1) {
+        row.remove();
+      }
+    });
+  }
+
+  container.querySelectorAll('.item-row').forEach(attachRemove);
+</script>
+
+<%- include('../footer') %>

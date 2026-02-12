@@ -1,0 +1,63 @@
+<%- include('../header') %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="mb-0">Products</h2>
+  <a href="/products/new" class="btn btn-dark btn-sm">
+    <i class="bi bi-plus-lg me-1"></i> New Product
+  </a>
+</div>
+
+<% if (products.length === 0) { %>
+  <p class="text-muted">No products yet.</p>
+<% } else { %>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Price</th>
+          <th>Subscribable</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% products.forEach(p => { %>
+          <tr class="<%= p.active ? '' : 'table-secondary' %>">
+            <td>
+              <strong><%= p.name %></strong>
+              <% if (p.description) { %>
+                <br><small class="text-muted"><%= p.description %></small>
+              <% } %>
+            </td>
+            <td><span class="badge bg-light text-dark"><%= p.category %></span></td>
+            <td><%= helpers.formatCents(p.price_cents) %></td>
+            <td><%= p.subscribable ? 'Yes' : 'No' %></td>
+            <td>
+              <% if (p.active) { %>
+                <span class="badge bg-success">Active</span>
+              <% } else { %>
+                <span class="badge bg-secondary">Inactive</span>
+              <% } %>
+            </td>
+            <td class="text-nowrap">
+              <a href="/products/<%= p.id %>/edit" class="btn btn-sm btn-outline-primary">Edit</a>
+              <% if (p.active) { %>
+                <form method="POST" action="/products/<%= p.id %>/deactivate" class="d-inline" data-confirm="Deactivate this product?">
+                  <button class="btn btn-sm btn-outline-danger">Deactivate</button>
+                </form>
+              <% } else { %>
+                <form method="POST" action="/products/<%= p.id %>/activate" class="d-inline">
+                  <button class="btn btn-sm btn-outline-success">Activate</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<%- include('../footer') %>

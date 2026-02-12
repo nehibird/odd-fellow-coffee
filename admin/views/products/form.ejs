@@ -1,0 +1,65 @@
+<%- include('../header') %>
+
+<div class="mb-3">
+  <a href="/products" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i> Back to Products</a>
+</div>
+
+<h2 class="mb-4"><%= product ? 'Edit' : 'New' %> Product</h2>
+
+<div class="card" style="max-width: 600px;">
+  <div class="card-body">
+    <form method="POST" action="<%= product ? '/products/' + product.id : '/products' %>">
+      <div class="mb-3">
+        <label class="form-label" for="name">Name <span class="text-danger">*</span></label>
+        <input type="text" name="name" id="name" class="form-control" required
+               value="<%= product ? product.name : '' %>" maxlength="100">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="category">Category <span class="text-danger">*</span></label>
+        <select name="category" id="category" class="form-select" required>
+          <option value="coffee" <%= product && product.category === 'coffee' ? 'selected' : '' %>>Coffee</option>
+          <option value="bakery" <%= product && product.category === 'bakery' ? 'selected' : '' %>>Bakery</option>
+          <option value="hotplate" <%= product && product.category === 'hotplate' ? 'selected' : '' %>>Hot Plate</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="description">Description</label>
+        <textarea name="description" id="description" class="form-control" rows="2" maxlength="500"><%= product ? product.description || '' : '' %></textarea>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="price">Price ($) <span class="text-danger">*</span></label>
+        <input type="number" name="price" id="price" class="form-control" step="0.01" min="0" required
+               value="<%= product ? (product.price_cents / 100).toFixed(2) : '' %>">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="variants">Variants (JSON)</label>
+        <textarea name="variants" id="variants" class="form-control font-monospace" rows="2"
+                  placeholder='{"sizes":["8oz","16oz"],"grinds":["whole","medium","fine"]}'><%= product ? product.variants || '' : '' %></textarea>
+        <div class="form-text">Optional. JSON object for size/grind options.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="image">Image filename</label>
+        <input type="text" name="image" id="image" class="form-control"
+               value="<%= product ? product.image || '' : '' %>" placeholder="coffee-bag.svg">
+      </div>
+
+      <div class="mb-3 form-check">
+        <input type="checkbox" name="subscribable" id="subscribable" class="form-check-input" value="1"
+               <%= product && product.subscribable ? 'checked' : '' %>>
+        <label class="form-check-label" for="subscribable">Available for subscription</label>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-dark"><%= product ? 'Save Changes' : 'Create Product' %></button>
+        <a href="/products" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%- include('../footer') %>
