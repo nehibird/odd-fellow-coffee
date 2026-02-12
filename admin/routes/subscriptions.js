@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getDb } from '../lib/db.js';
 import { sendSubscriptionFulfilled } from '../lib/email.js';
 
+const BASE = process.env.BASE_PATH?.replace(/\/+$/, '') || '';
 const router = Router();
 
 router.get('/', (req, res) => {
@@ -19,7 +20,7 @@ router.post('/:id/fulfill', async (req, res) => {
   const sub = db.prepare('SELECT * FROM subscriptions WHERE id = ?').get(req.params.id);
   if (!sub) {
     res.flash('error', 'Subscription not found.');
-    return res.redirect('/subscriptions');
+    return res.redirect(BASE + '/subscriptions');
   }
 
   const now = new Date();
@@ -47,7 +48,7 @@ router.post('/:id/fulfill', async (req, res) => {
     res.flash('warning', `Fulfilled, but email failed: ${e.message}`);
   }
 
-  res.redirect('/subscriptions');
+  res.redirect(BASE + '/subscriptions');
 });
 
 export default router;

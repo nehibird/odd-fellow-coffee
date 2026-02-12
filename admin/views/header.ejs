@@ -6,7 +6,7 @@
   <title><%= typeof title !== 'undefined' ? title + ' - ' : '' %>Odd Fellow Admin</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link href="/css/admin.css" rel="stylesheet">
+  <link href="<%= base %>/css/admin.css" rel="stylesheet">
 </head>
 <body>
   <div class="d-flex">
@@ -17,43 +17,43 @@
       </div>
       <ul class="nav flex-column flex-grow-1">
         <li class="nav-item">
-          <a class="nav-link <%= currentPath === '/' ? 'active' : '' %>" href="/">
+          <a class="nav-link <%= currentPath === '/' ? 'active' : '' %>" href="<%= base %>/">
             <i class="bi bi-grid-1x2 me-2"></i> Dashboard
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link <%= currentPath.startsWith('/orders') ? 'active' : '' %>" href="/orders">
+          <a class="nav-link <%= currentPath.startsWith('/orders') ? 'active' : '' %>" href="<%= base %>/orders">
             <i class="bi bi-bag me-2"></i> Orders
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link <%= currentPath.startsWith('/products') ? 'active' : '' %>" href="/products">
+          <a class="nav-link <%= currentPath.startsWith('/products') ? 'active' : '' %>" href="<%= base %>/products">
             <i class="bi bi-box-seam me-2"></i> Products
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link <%= currentPath.startsWith('/subscriptions') ? 'active' : '' %>" href="/subscriptions">
+          <a class="nav-link <%= currentPath.startsWith('/subscriptions') ? 'active' : '' %>" href="<%= base %>/subscriptions">
             <i class="bi bi-arrow-repeat me-2"></i> Subscriptions
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link <%= currentPath.startsWith('/reservations') ? 'active' : '' %>" href="/reservations">
+          <a class="nav-link <%= currentPath.startsWith('/reservations') ? 'active' : '' %>" href="<%= base %>/reservations">
             <i class="bi bi-calendar-event me-2"></i> Reservations
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link <%= currentPath.startsWith('/slots') ? 'active' : '' %>" href="/slots">
+          <a class="nav-link <%= currentPath.startsWith('/slots') ? 'active' : '' %>" href="<%= base %>/slots">
             <i class="bi bi-clock me-2"></i> Time Slots
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link <%= currentPath.startsWith('/drops') ? 'active' : '' %>" href="/drops">
+          <a class="nav-link <%= currentPath.startsWith('/drops') ? 'active' : '' %>" href="<%= base %>/drops">
             <i class="bi bi-fire me-2"></i> Drops
           </a>
         </li>
       </ul>
       <hr class="border-secondary mt-auto">
-      <a href="/logout" class="nav-link text-muted"><i class="bi bi-box-arrow-left me-2"></i> Sign Out</a>
+      <a href="<%= base %>/logout" class="nav-link text-muted"><i class="bi bi-box-arrow-left me-2"></i> Sign Out</a>
     </nav>
 
     <main class="main-content flex-grow-1 p-4">

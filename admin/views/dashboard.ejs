@@ -4,7 +4,7 @@
 
 <div class="row g-3">
   <div class="col-sm-6 col-lg-3">
-    <a href="/orders?status=pending" class="text-decoration-none">
+    <a href="<%= base %>/orders?status=pending" class="text-decoration-none">
       <div class="card border-warning h-100">
         <div class="card-body">
           <h6 class="card-subtitle text-muted mb-2">Pending Orders</h6>
@@ -14,7 +14,7 @@
     </a>
   </div>
   <div class="col-sm-6 col-lg-3">
-    <a href="/orders?status=confirmed" class="text-decoration-none">
+    <a href="<%= base %>/orders?status=confirmed" class="text-decoration-none">
       <div class="card border-primary h-100">
         <div class="card-body">
           <h6 class="card-subtitle text-muted mb-2">Confirmed Orders</h6>
@@ -24,7 +24,7 @@
     </a>
   </div>
   <div class="col-sm-6 col-lg-3">
-    <a href="/orders" class="text-decoration-none">
+    <a href="<%= base %>/orders" class="text-decoration-none">
       <div class="card h-100">
         <div class="card-body">
           <h6 class="card-subtitle text-muted mb-2">Total Orders</h6>
@@ -34,7 +34,7 @@
     </a>
   </div>
   <div class="col-sm-6 col-lg-3">
-    <a href="/products" class="text-decoration-none">
+    <a href="<%= base %>/products" class="text-decoration-none">
       <div class="card h-100">
         <div class="card-body">
           <h6 class="card-subtitle text-muted mb-2">Active Products</h6>
@@ -44,7 +44,7 @@
     </a>
   </div>
   <div class="col-sm-6 col-lg-3">
-    <a href="/subscriptions" class="text-decoration-none">
+    <a href="<%= base %>/subscriptions" class="text-decoration-none">
       <div class="card <%= counts.overdueSubscriptions > 0 ? 'border-danger' : '' %> h-100">
         <div class="card-body">
           <h6 class="card-subtitle text-muted mb-2">Active Subscriptions</h6>
@@ -57,7 +57,7 @@
     </a>
   </div>
   <div class="col-sm-6 col-lg-3">
-    <a href="/reservations" class="text-decoration-none">
+    <a href="<%= base %>/reservations" class="text-decoration-none">
       <div class="card h-100">
         <div class="card-body">
           <h6 class="card-subtitle text-muted mb-2">Upcoming Reservations</h6>
@@ -67,7 +67,7 @@
     </a>
   </div>
   <div class="col-sm-6 col-lg-3">
-    <a href="/drops" class="text-decoration-none">
+    <a href="<%= base %>/drops" class="text-decoration-none">
       <div class="card h-100">
         <div class="card-body">
           <h6 class="card-subtitle text-muted mb-2">Active Drops</h6>

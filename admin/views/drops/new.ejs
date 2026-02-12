@@ -1,14 +1,14 @@
 <%- include('../header') %>
 
 <div class="mb-3">
-  <a href="/drops" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i> Back to Drops</a>
+  <a href="<%= base %>/drops" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i> Back to Drops</a>
 </div>
 
 <h2 class="mb-4">New Drop</h2>
 
 <div class="card" style="max-width: 700px;">
   <div class="card-body">
-    <form method="POST" action="/drops" id="drop-form">
+    <form method="POST" action="<%= base %>/drops" id="drop-form">
       <div class="mb-3">
         <label class="form-label" for="title">Title <span class="text-danger">*</span></label>
         <input type="text" name="title" id="title" class="form-control" required placeholder="e.g. Valentine's Day Special">
@@ -74,7 +74,7 @@
 
       <div class="d-flex gap-2">
         <button type="submit" class="btn btn-dark">Create Drop</button>
-        <a href="/drops" class="btn btn-outline-secondary">Cancel</a>
+        <a href="<%= base %>/drops" class="btn btn-outline-secondary">Cancel</a>
       </div>
     </form>
   </div>

@@ -1,14 +1,14 @@
 <%- include('../header') %>
 
 <div class="mb-3">
-  <a href="/products" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i> Back to Products</a>
+  <a href="<%= base %>/products" class="text-decoration-none"><i class="bi bi-arrow-left me-1"></i> Back to Products</a>
 </div>
 
 <h2 class="mb-4"><%= product ? 'Edit' : 'New' %> Product</h2>
 
 <div class="card" style="max-width: 600px;">
   <div class="card-body">
-    <form method="POST" action="<%= product ? '/products/' + product.id : '/products' %>">
+    <form method="POST" action="<%= product ? base + '/products/' + product.id : base + '/products' %>">
       <div class="mb-3">
         <label class="form-label" for="name">Name <span class="text-danger">*</span></label>
         <input type="text" name="name" id="name" class="form-control" required
@@ -56,7 +56,7 @@
 
       <div class="d-flex gap-2">
         <button type="submit" class="btn btn-dark"><%= product ? 'Save Changes' : 'Create Product' %></button>
-        <a href="/products" class="btn btn-outline-secondary">Cancel</a>
+        <a href="<%= base %>/products" class="btn btn-outline-secondary">Cancel</a>
       </div>
     </form>
   </div>

@@ -64,7 +64,7 @@
             </td>
             <td>
               <% if (sub.status === 'active') { %>
-                <form method="POST" action="/subscriptions/<%= sub.id %>/fulfill" data-confirm="Mark this subscription as fulfilled and send notification email?">
+                <form method="POST" action="<%= base %>/subscriptions/<%= sub.id %>/fulfill" data-confirm="Mark this subscription as fulfilled and send notification email?">
                   <button class="btn btn-sm btn-outline-success">Mark Fulfilled</button>
                 </form>
               <% } %>

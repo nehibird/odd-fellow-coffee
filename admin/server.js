@@ -21,6 +21,7 @@ import dropRoutes from './routes/drops.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.ADMIN_PORT || 3201;
+const BASE = (process.env.BASE_PATH || '').replace(/\/+$/, ''); // e.g. "/ofc-admin" or ""
 const db = getDb();
 
 app.set('view engine', 'ejs');
@@ -49,6 +50,7 @@ app.use(flashMiddleware);
 app.use((req, res, next) => {
   res.locals.helpers = helpers;
   res.locals.currentPath = req.path;
+  res.locals.base = BASE;
   next();
 });
 
