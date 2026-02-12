@@ -1,0 +1,79 @@
+<%- include('../header') %>
+
+<h2 class="mb-4">Subscriptions</h2>
+
+<% if (subs.length === 0) { %>
+  <p class="text-muted">No subscriptions yet.</p>
+<% } else { %>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Product</th>
+          <th>Customer</th>
+          <th>Frequency</th>
+          <th>Price</th>
+          <th>Next Delivery</th>
+          <th>Last Fulfilled</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% subs.forEach(sub => { %>
+          <% const overdue = sub.status === 'active' && helpers.isOverdue(sub.next_delivery_date); %>
+          <tr class="<%= overdue ? 'table-danger' : '' %>">
+            <td>
+              <strong><%= sub.product_name || 'Unknown' %></strong>
+              <% if (sub.variant) { %>
+                <br><small class="text-muted"><%= sub.variant %></small>
+              <% } %>
+            </td>
+            <td>
+              <%= sub.customer_email || 'N/A' %>
+              <% const addr = helpers.parseAddress(sub.shipping_address); %>
+              <% if (addr) { %>
+                <div class="mt-1">
+                  <small class="text-muted">
+                    <i class="bi bi-geo-alt"></i>
+                    <%= sub.shipping_name ? sub.shipping_name + ' - ' : '' %><%= addr.line1 || '' %><%= addr.city ? ', ' + addr.city : '' %><%= addr.state ? ', ' + addr.state : '' %> <%= addr.postal_code || '' %>
+                  </small>
+                </div>
+              <% } %>
+            </td>
+            <td><%= helpers.frequencyLabel(sub.frequency) %></td>
+            <td><%= sub.price_cents ? helpers.formatCents(sub.price_cents) : 'N/A' %></td>
+            <td>
+              <% if (sub.next_delivery_date) { %>
+                <span class="<%= overdue ? 'text-danger fw-bold' : '' %>">
+                  <%= helpers.formatDate(sub.next_delivery_date) %>
+                </span>
+                <% if (overdue) { %>
+                  <br><small class="text-danger">OVERDUE</small>
+                <% } %>
+              <% } else { %>
+                N/A
+              <% } %>
+            </td>
+            <td><small><%= helpers.formatDateTime(sub.last_fulfilled_at) %></small></td>
+            <td>
+              <%- helpers.statusBadge(sub.status) %>
+              <% if (sub.cancel_at_period_end) { %>
+                <br><small class="text-danger">Canceling</small>
+              <% } %>
+            </td>
+            <td>
+              <% if (sub.status === 'active') { %>
+                <form method="POST" action="/subscriptions/<%= sub.id %>/fulfill" data-confirm="Mark this subscription as fulfilled and send notification email?">
+                  <button class="btn btn-sm btn-outline-success">Mark Fulfilled</button>
+                </form>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<%- include('../footer') %>

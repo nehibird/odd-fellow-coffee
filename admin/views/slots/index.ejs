@@ -1,0 +1,77 @@
+<%- include('../header') %>
+
+<h2 class="mb-4">Time Slots</h2>
+
+<div class="card mb-4" style="max-width: 500px;">
+  <div class="card-header">
+    <h6 class="mb-0">Add Time Slot</h6>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="/slots">
+      <div class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label class="form-label" for="day_of_week">Day</label>
+          <select name="day_of_week" id="day_of_week" class="form-select form-select-sm">
+            <option value="0">Sunday</option>
+            <option value="1" selected>Monday</option>
+            <option value="2">Tuesday</option>
+            <option value="3">Wednesday</option>
+            <option value="4">Thursday</option>
+            <option value="5">Friday</option>
+            <option value="6">Saturday</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label" for="start_time">Start</label>
+          <input type="time" name="start_time" id="start_time" class="form-control form-control-sm" required value="07:00">
+        </div>
+        <div class="col-auto">
+          <label class="form-label" for="end_time">End</label>
+          <input type="time" name="end_time" id="end_time" class="form-control form-control-sm" required value="08:00">
+        </div>
+        <div class="col-auto">
+          <label class="form-label" for="capacity">Capacity</label>
+          <input type="number" name="capacity" id="capacity" class="form-control form-control-sm" min="1" required value="5" style="width: 70px;">
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-dark btn-sm">Add</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<% if (slots.length === 0) { %>
+  <p class="text-muted">No time slots configured.</p>
+<% } else { %>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Day</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Capacity</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% slots.forEach(slot => { %>
+          <tr>
+            <td><%= helpers.dayName(slot.day_of_week) %></td>
+            <td><%= slot.start_time %></td>
+            <td><%= slot.end_time %></td>
+            <td><%= slot.capacity %></td>
+            <td>
+              <form method="POST" action="/slots/<%= slot.id %>/delete" class="d-inline" data-confirm="Remove this time slot?">
+                <button class="btn btn-sm btn-outline-danger">Remove</button>
+              </form>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<%- include('../footer') %>

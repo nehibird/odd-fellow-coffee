@@ -9,3 +9,17 @@ services:
     volumes:
       - ./data:/app/data
     restart: unless-stopped
+
+  admin:
+    build: ./admin
+    ports:
+      - "3201:3201"
+    env_file: admin/.env
+    environment:
+      - DB_PATH=/app/data/odd-fellow.db
+      - ADMIN_PORT=3201
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    depends_on:
+      - web

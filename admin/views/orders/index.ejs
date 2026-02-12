@@ -1,0 +1,118 @@
+<%- include('../header') %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="mb-0">Orders</h2>
+  <a href="/orders/export-csv" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-download me-1"></i> Export for Pirateship
+  </a>
+</div>
+
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item">
+    <a class="nav-link <%= filter === 'all' ? 'active' : '' %>" href="/orders">All</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= filter === 'pending' ? 'active' : '' %>" href="/orders?status=pending">Pending</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= filter === 'confirmed' ? 'active' : '' %>" href="/orders?status=confirmed">Confirmed</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= filter === 'fulfilled' ? 'active' : '' %>" href="/orders?status=fulfilled">Fulfilled</a>
+  </li>
+</ul>
+
+<% if (orders.length === 0) { %>
+  <p class="text-muted">No orders found.</p>
+<% } else { %>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th>Customer</th>
+          <th>Items</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th>Stage</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% orders.forEach(order => { %>
+          <% const addr = helpers.parseAddress(order.shipping_address); %>
+          <% const items = helpers.parseItems(order.items); %>
+          <tr>
+            <td><strong><%= order.id %></strong></td>
+            <td>
+              <div><%= order.customer_name || 'N/A' %></div>
+              <% if (order.customer_email) { %>
+                <small class="text-muted"><%= order.customer_email %></small>
+              <% } %>
+              <% if (addr) { %>
+                <div class="mt-1">
+                  <small class="text-muted">
+                    <i class="bi bi-geo-alt"></i>
+                    <%= addr.line1 || '' %><%= addr.line2 ? ', ' + addr.line2 : '' %><%= addr.city ? ', ' + addr.city : '' %><%= addr.state ? ', ' + addr.state : '' %> <%= addr.postal_code || '' %>
+                  </small>
+                </div>
+              <% } %>
+            </td>
+            <td>
+              <% items.forEach(item => { %>
+                <div><small><%= item.quantity || 1 %>x <%= item.name || 'item' %></small></div>
+              <% }); %>
+            </td>
+            <td>
+              <%= helpers.formatCents(order.total_cents) %>
+              <% if (order.shipping_cents) { %>
+                <br><small class="text-muted">+ <%= helpers.formatCents(order.shipping_cents) %> ship</small>
+              <% } %>
+            </td>
+            <td><%- helpers.statusBadge(order.status) %></td>
+            <td>
+              <% if (order.stage) { %>
+                <%- helpers.statusBadge(order.stage) %>
+              <% } else { %>
+                <span class="text-muted">-</span>
+              <% } %>
+            </td>
+            <td><small><%= helpers.formatDate(order.created_at) %></small></td>
+            <td class="text-nowrap">
+              <% if (order.status === 'pending') { %>
+                <form method="POST" action="/orders/<%= order.id %>/status" class="d-inline">
+                  <input type="hidden" name="status" value="confirmed">
+                  <button class="btn btn-sm btn-outline-primary">Confirm</button>
+                </form>
+              <% } %>
+              <% if (order.status === 'confirmed') { %>
+                <form method="POST" action="/orders/<%= order.id %>/status" class="d-inline">
+                  <input type="hidden" name="status" value="fulfilled">
+                  <button class="btn btn-sm btn-outline-success">Fulfill</button>
+                </form>
+              <% } %>
+              <% if (order.stage) { %>
+                <%
+                  const pickupFlow = ['ordered', 'baking', 'ready', 'picked_up'];
+                  const shipFlow = ['confirmed', 'shipped', 'delivered'];
+                  const flow = order.shipping_method ? shipFlow : pickupFlow;
+                  const idx = flow.indexOf(order.stage);
+                  const nextStage = (idx >= 0 && idx < flow.length - 1) ? flow[idx + 1] : null;
+                %>
+                <% if (nextStage) { %>
+                  <form method="POST" action="/orders/<%= order.id %>/stage" class="d-inline">
+                    <input type="hidden" name="stage" value="<%= nextStage %>">
+                    <button class="btn btn-sm btn-outline-info"><%= nextStage.replace(/_/g, ' ') %> &rarr;</button>
+                  </form>
+                <% } %>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<%- include('../footer') %>
