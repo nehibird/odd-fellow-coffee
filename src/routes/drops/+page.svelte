@@ -1,15 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { cart } from '$lib/components/CartStore';
 
-	let drops: any[] = [];
-	let loading = true;
-
-	onMount(async () => {
-		const res = await fetch('/api/drops');
-		if (res.ok) drops = await res.json();
-		loading = false;
-	});
+	export let data;
+	$: drops = data.drops;
 
 	function remaining(item: any) {
 		return item.quantity_available - item.quantity_sold;
@@ -48,9 +41,7 @@
 	</h1>
 	<p class="mt-2 text-gray-600">Limited bakes & specials. Grab 'em before they're gone.</p>
 
-	{#if loading}
-		<p class="mt-8 text-gray-400">Loading drops...</p>
-	{:else if drops.length === 0}
+	{#if drops.length === 0}
 		<div class="mt-8 rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
 			<p class="text-lg text-gray-500">No drops right now.</p>
 			<p class="mt-1 text-sm text-gray-400">Check back soon for Deb's next bake day!</p>

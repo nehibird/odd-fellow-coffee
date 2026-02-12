@@ -1,17 +1,12 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import ProductCard from '$lib/components/ProductCard.svelte';
 
-	let products: any[] = [];
+	export let data;
+	$: products = data.products;
 	let activeCategory = 'all';
 	const categories = ['all', 'coffee', 'bakery'];
 
-	onMount(async () => {
-		const res = await fetch('/api/products');
-		products = await res.json();
-	});
-
-	$: filtered = activeCategory === 'all' ? products : products.filter((p) => p.category === activeCategory);
+	$: filtered = activeCategory === 'all' ? products : products.filter((p: any) => p.category === activeCategory);
 </script>
 
 <svelte:head>
