@@ -108,11 +108,25 @@
                   <button class="btn btn-sm btn-outline-success">Fulfill</button>
                 </form>
               <% } %>
-              <% if (order.stage) { %>
+              <%
+                const pickupFlow = ['ordered', 'baking', 'ready', 'picked_up'];
+                const shipFlow = ['confirmed', 'shipped', 'delivered'];
+                const flow = order.shipping_method ? shipFlow : pickupFlow;
+              %>
+              <% if (!order.stage && order.status === 'confirmed') { %>
+                <% if (order.shipping_method) { %>
+                  <form method="POST" action="<%= base %>/orders/<%= order.id %>/stage" class="d-inline">
+                    <input type="hidden" name="stage" value="shipped">
+                    <button class="btn btn-sm btn-outline-info"><i class="bi bi-truck"></i> Mark Shipped</button>
+                  </form>
+                <% } else { %>
+                  <form method="POST" action="<%= base %>/orders/<%= order.id %>/stage" class="d-inline">
+                    <input type="hidden" name="stage" value="ordered">
+                    <button class="btn btn-sm btn-outline-info">Start Prep</button>
+                  </form>
+                <% } %>
+              <% } else if (order.stage) { %>
                 <%
-                  const pickupFlow = ['ordered', 'baking', 'ready', 'picked_up'];
-                  const shipFlow = ['confirmed', 'shipped', 'delivered'];
-                  const flow = order.shipping_method ? shipFlow : pickupFlow;
                   const idx = flow.indexOf(order.stage);
                   const nextStage = (idx >= 0 && idx < flow.length - 1) ? flow[idx + 1] : null;
                 %>
