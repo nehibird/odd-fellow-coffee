@@ -102,7 +102,7 @@
 			<img src="/assets/images/products/{product.image}" alt={product.name} class="h-full w-full object-cover" />
 		{:else}
 			<div class="flex h-full items-center justify-center text-gray-400">
-				<span class="text-4xl">&#9749;</span>
+				<span class="text-4xl">{'\u2615'}</span>
 			</div>
 		{/if}
 	</div>
@@ -152,7 +152,7 @@
 		on:click={addToCart}
 		class="mt-3 w-full rounded-full py-2 text-sm font-medium transition-colors {addedToCart ? 'bg-green-600 text-white' : 'bg-black text-white hover:bg-medium-carmine'}"
 	>
-		{addedToCart ? '&#10003; Added!' : 'Add to Cart'}
+		{addedToCart ? '\u2713 Added!' : 'Add to Cart'}
 	</button>
 
 	{#if product.subscribable}

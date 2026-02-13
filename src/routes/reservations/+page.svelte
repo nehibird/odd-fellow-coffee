@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { PUBLIC_STRIPE_PUBLISHABLE_KEY } from '$env/static/public';
 
 	let date = '';
@@ -54,7 +55,7 @@
 				}
 
 				showCheckout = true;
-				await new Promise((r) => setTimeout(r, 50));
+				await tick();
 
 				stripeCheckout = await stripe.initEmbeddedCheckout({
 					clientSecret: data.clientSecret
