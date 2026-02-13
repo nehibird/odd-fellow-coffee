@@ -78,7 +78,6 @@
 	// Subscribe state
 	let showSubscribe = false;
 	let subFrequency = 'weekly';
-	let subEmail = '';
 	let subError = '';
 	let showShippingModal = false;
 
@@ -89,7 +88,6 @@
 	})();
 
 	function openShippingModal() {
-		if (!subEmail) { subError = 'Email required'; return; }
 		subError = '';
 		showShippingModal = true;
 	}
@@ -178,7 +176,6 @@
 					<option value="biweekly">Every 2 Weeks — ${(subPrice / 100).toFixed(2)}/2 weeks</option>
 					<option value="monthly">Monthly — ${(subPrice / 100).toFixed(2)}/month</option>
 				</select>
-				<input bind:value={subEmail} type="email" placeholder="Your email" class="w-full rounded border px-2 py-1 text-sm" />
 				{#if subError}<p class="text-xs text-red-500">{subError}</p>{/if}
 				<p class="rounded bg-white px-2 py-1.5 text-center text-xs text-gray-700">
 					First delivery: <span class="font-semibold">{estimatedDelivery}</span>
@@ -202,7 +199,6 @@
 		productName={product.name}
 		variant={variantString}
 		frequency={subFrequency}
-		email={subEmail}
 		priceCents={currentPrice}
 		{subPrice}
 		on:close={() => (showShippingModal = false)}
