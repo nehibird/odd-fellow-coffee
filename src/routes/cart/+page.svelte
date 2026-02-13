@@ -6,10 +6,16 @@
 
 	let loading = false;
 	let errorMsg = '';
+	let zip = '';
 
 	$: total = items.reduce((sum, i) => sum + i.price_cents * i.quantity, 0);
+	$: isLocal = zip.trim() === '74653';
 
 	async function checkout() {
+		if (!zip.trim()) {
+			errorMsg = 'Please enter your zip code';
+			return;
+		}
 		loading = true;
 		errorMsg = '';
 		try {
@@ -18,7 +24,8 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variant: i.variant, price_cents: i.price_cents, dropItemId: i.dropItemId })),
-					dropId: items[0]?.dropId || undefined
+					dropId: items[0]?.dropId || undefined,
+					zip: zip.trim()
 				})
 			});
 			const data = await res.json();
@@ -71,6 +78,15 @@
 		</div>
 
 		<div class="mt-6 max-w-md space-y-3">
+			<div>
+				<label for="zip" class="block text-sm font-medium text-gray-700">Zip Code</label>
+				<input id="zip" type="text" inputmode="numeric" maxlength="5" bind:value={zip} placeholder="Enter your zip code" class="mt-1 w-32 rounded-lg border px-3 py-2 text-sm">
+				{#if zip.trim()}
+					<p class="mt-1 text-sm {isLocal ? 'text-green-600' : 'text-gray-500'}">
+						{isLocal ? 'Free local delivery!' : 'Flat rate shipping: $5.99'}
+					</p>
+				{/if}
+			</div>
 			{#if errorMsg}<p class="text-sm text-red-500">{errorMsg}</p>{/if}
 			<button
 				on:click={checkout}
@@ -79,7 +95,6 @@
 			>
 				{loading ? 'Processing...' : 'Checkout with Stripe'}
 			</button>
-			<p class="text-center text-sm text-gray-500">You'll enter your details on the next page</p>
 		</div>
 	{/if}
 </section>

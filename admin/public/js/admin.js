@@ -67,6 +67,7 @@ function copyShipping(btn, json) {
     street = street.slice(0, -a.city.length).trim().replace(/,\s*$/, '');
   }
   const lines = [a.name];
+  if (a.email) lines.push(a.email);
   if (street) lines.push(street);
   if (a.line2) lines.push(a.line2);
   lines.push([a.city, a.state].filter(Boolean).join(', ') + ' ' + a.zip);
