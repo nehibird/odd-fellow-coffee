@@ -1,15 +1,13 @@
 import { json, error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
 import { stripe } from '$lib/server/stripe';
-import { isValidEmail, verifyEmailToken } from '$lib/server/validation';
+import { isValidEmail } from '$lib/server/validation';
 import { sendCancellationConfirmation } from '$lib/server/email';
 
 export async function GET({ url }) {
 	const email = url.searchParams.get('email');
-	const token = url.searchParams.get('token');
-	if (!email || !token) throw error(400, 'email and token required');
+	if (!email) throw error(400, 'email required');
 	if (!isValidEmail(email)) throw error(400, 'Invalid email format');
-	if (!verifyEmailToken(email, token)) throw error(403, 'Invalid token');
 
 	const db = getDb();
 	const subs = db.prepare(
@@ -24,9 +22,8 @@ export async function GET({ url }) {
 }
 
 export async function PATCH({ request }) {
-	const { subscriptionId, email, token, action } = await request.json();
-	if (!subscriptionId || !email || !token || !action) throw error(400, 'subscriptionId, email, token, and action required');
-	if (!verifyEmailToken(email, token)) throw error(403, 'Invalid token');
+	const { subscriptionId, email, action } = await request.json();
+	if (!subscriptionId || !email || !action) throw error(400, 'subscriptionId, email, and action required');
 	if (action !== 'pause' && action !== 'resume') throw error(400, 'action must be pause or resume');
 
 	const db = getDb();
@@ -49,9 +46,8 @@ export async function PATCH({ request }) {
 }
 
 export async function DELETE({ request }) {
-	const { subscriptionId, email, token, reason } = await request.json();
-	if (!subscriptionId || !email || !token) throw error(400, 'subscriptionId, email, and token required');
-	if (!verifyEmailToken(email, token)) throw error(403, 'Invalid token');
+	const { subscriptionId, email, reason } = await request.json();
+	if (!subscriptionId || !email) throw error(400, 'subscriptionId and email required');
 
 	const db = getDb();
 	const sub = db.prepare('SELECT * FROM subscriptions WHERE id = ? AND customer_email = ?').get(subscriptionId, email) as any;

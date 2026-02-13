@@ -2,25 +2,22 @@
 	import { page } from '$app/stores';
 
 	let email = '';
-	let token = '';
 	let subs: any[] = [];
 	let loaded = false;
 	let error = '';
 
-	// Check for token in URL (provided after subscription checkout)
+	// Check for email in URL (provided after subscription checkout)
 	$: {
 		const urlEmail = $page.url.searchParams.get('email');
-		const urlToken = $page.url.searchParams.get('token');
-		if (urlEmail && urlToken) {
+		if (urlEmail) {
 			email = urlEmail;
-			token = urlToken;
 		}
 	}
 
 	async function lookup() {
-		if (!email || !token) { error = 'Email and verification token required.'; return; }
+		if (!email) { error = 'Please enter your email address.'; return; }
 		error = '';
-		const res = await fetch(`/api/subscriptions?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`);
+		const res = await fetch(`/api/subscriptions?email=${encodeURIComponent(email)}`);
 		if (res.ok) {
 			subs = await res.json();
 			loaded = true;
@@ -36,7 +33,7 @@
 		const res = await fetch('/api/subscriptions', {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ subscriptionId: sub.id, email, token, action })
+			body: JSON.stringify({ subscriptionId: sub.id, email, action })
 		});
 		if (res.ok) {
 			subs = subs.map((s) =>
@@ -64,7 +61,7 @@
 		const res = await fetch('/api/subscriptions', {
 			method: 'DELETE',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ subscriptionId: cancelTarget.id, email, token, reason: cancelReason })
+			body: JSON.stringify({ subscriptionId: cancelTarget.id, email, reason: cancelReason })
 		});
 		if (res.ok) {
 			subs = subs.map((s) => (s.id === cancelTarget.id ? { ...s, cancel_at_period_end: 1 } : s));
@@ -92,12 +89,7 @@
 	<div class="mt-6 max-w-md space-y-3">
 		<div>
 			<label for="sub-email" class="block text-sm font-medium text-gray-700">Email</label>
-			<input id="sub-email" bind:value={email} type="email" placeholder="you@example.com" class="mt-1 w-full rounded border px-4 py-2" />
-		</div>
-		<div>
-			<label for="sub-token" class="block text-sm font-medium text-gray-700">Verification token</label>
-			<input id="sub-token" bind:value={token} type="text" placeholder="From your confirmation email" class="mt-1 w-full rounded border px-4 py-2" on:keydown={(e) => e.key === 'Enter' && lookup()} />
-			<p class="mt-1 text-xs text-gray-400">Your token was included in your subscription confirmation email.</p>
+			<input id="sub-email" bind:value={email} type="email" placeholder="you@example.com" class="mt-1 w-full rounded border px-4 py-2" on:keydown={(e) => e.key === 'Enter' && lookup()} />
 		</div>
 		<button on:click={lookup} class="w-full rounded-full bg-black py-2 text-white hover:bg-medium-carmine">Look Up</button>
 		{#if error}<p class="text-sm text-red-500">{error}</p>{/if}
