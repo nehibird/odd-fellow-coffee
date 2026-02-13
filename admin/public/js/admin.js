@@ -85,3 +85,10 @@ function copyShipping(btn, json) {
   btn.classList.replace('btn-outline-secondary', 'btn-success');
   setTimeout(() => { btn.innerHTML = orig; btn.classList.replace('btn-success', 'btn-outline-secondary'); }, 1500);
 }
+
+function shipOrder(btn, orderId) {
+  const tracking = prompt('Enter tracking number (or leave blank):');
+  if (tracking === null) return; // cancelled
+  document.getElementById('tracking-' + orderId).value = tracking;
+  document.getElementById('ship-form-' + orderId).submit();
+}

@@ -127,11 +127,21 @@ ${btn(BRAND.siteUrl + '/shop', 'Continue Shopping')}
   });
 }
 
-export async function sendOrderShipped(email, name, orderId) {
+export async function sendOrderShipped(email, name, orderId, trackingNumber) {
+  const trackingBlock = trackingNumber ? `
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background-color:${BRAND.lightBg};border-radius:8px;width:100%;">
+<tr><td style="padding:16px;">
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Tracking Number</p>
+<p style="margin:0;font-size:16px;font-weight:700;color:${BRAND.dark};">${esc(trackingNumber)}</p>
+</td></tr>
+</table>` : '';
+
   const html = emailShell(`
 <p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Shipment Update</p>
 <h1 style="margin:0 0 8px;font-size:28px;color:${BRAND.dark};">Your order is on its way!</h1>
 <p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};">Order <strong style="color:${BRAND.dark};">#${esc(String(orderId))}</strong> has been shipped, ${esc(name)}.</p>
+
+${trackingBlock}
 
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;border:1px solid ${BRAND.border};border-radius:8px;width:100%;">
 <tr><td style="padding:16px;">
@@ -154,6 +164,29 @@ ${btn(BRAND.siteUrl + '/shop', 'Continue Shopping')}
     from: `"Odd Fellow Coffee" <${process.env.FROM_EMAIL}>`,
     to: email,
     subject: `Order #${orderId} Shipped - Odd Fellow Coffee`,
+    html
+  });
+}
+
+export async function sendOrderDelivered(email, name, orderId) {
+  const html = emailShell(`
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Delivery Confirmed</p>
+<h1 style="margin:0 0 8px;font-size:28px;color:${BRAND.dark};">Your order has been delivered!</h1>
+<p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};">Order <strong style="color:${BRAND.dark};">#${esc(String(orderId))}</strong> has arrived, ${esc(name)}. Enjoy!</p>
+
+<p style="font-size:14px;color:${BRAND.textMuted};line-height:1.6;">We hope you love everything. Questions or feedback? Just reply to this email.</p>
+
+${divider()}
+
+<p style="text-align:center;margin:0;">
+${btn(BRAND.siteUrl + '/shop', 'Order Again')}
+</p>
+`);
+
+  await getTransporter().sendMail({
+    from: `"Odd Fellow Coffee" <${process.env.FROM_EMAIL}>`,
+    to: email,
+    subject: `Order #${orderId} Delivered - Odd Fellow Coffee`,
     html
   });
 }

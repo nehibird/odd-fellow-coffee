@@ -1,13 +1,12 @@
 import { Router } from 'express';
 import { getDb } from '../lib/db.js';
 import { generatePirateshipCSV } from '../lib/csv.js';
-import { sendOrderReady, sendOrderShipped } from '../lib/email.js';
+import { sendOrderShipped, sendOrderDelivered } from '../lib/email.js';
 
 const BASE = process.env.BASE_PATH?.replace(/\/+$/, '') || '';
 const router = Router();
 
-const VALID_STATUSES = new Set(['pending', 'confirmed', 'fulfilled']);
-const VALID_STAGES = new Set(['ordered', 'baking', 'ready', 'picked_up', 'shipped', 'delivered']);
+const VALID_STATUSES = new Set(['pending', 'confirmed', 'shipped', 'delivered']);
 
 router.get('/', (req, res) => {
   const db = getDb();
@@ -47,44 +46,35 @@ router.post('/bulk-status', (req, res) => {
   res.redirect(BASE + '/orders');
 });
 
-router.post('/:id/status', (req, res) => {
-  const { status } = req.body;
+router.post('/:id/status', async (req, res) => {
+  const { status, tracking_number } = req.body;
   if (!VALID_STATUSES.has(status)) {
     res.flash('error', 'Invalid status.');
     return res.redirect(BASE + '/orders');
   }
   const db = getDb();
-  db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, req.params.id);
-  res.flash('success', `Order #${req.params.id} marked as ${status}.`);
-  res.redirect(BASE + '/orders');
-});
 
-router.post('/:id/stage', async (req, res) => {
-  const { stage } = req.body;
-  if (!VALID_STAGES.has(stage)) {
-    res.flash('error', 'Invalid stage.');
-    return res.redirect(BASE + '/orders');
+  if (status === 'shipped' && tracking_number) {
+    db.prepare('UPDATE orders SET status = ?, tracking_number = ? WHERE id = ?').run(status, tracking_number.trim(), req.params.id);
+  } else {
+    db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, req.params.id);
   }
-  const db = getDb();
-  db.prepare('UPDATE orders SET stage = ? WHERE id = ?').run(stage, req.params.id);
 
-  // Send notification emails for key stage transitions
+  // Send notification emails
   try {
-    if (stage === 'ready' || stage === 'shipped') {
-      const order = db.prepare('SELECT customer_email, customer_name FROM orders WHERE id = ?').get(req.params.id);
-      if (order?.customer_email) {
-        if (stage === 'ready') {
-          await sendOrderReady(order.customer_email, order.customer_name || 'Customer', req.params.id);
-        } else {
-          await sendOrderShipped(order.customer_email, order.customer_name || 'Customer', req.params.id);
-        }
+    const order = db.prepare('SELECT customer_email, customer_name FROM orders WHERE id = ?').get(req.params.id);
+    if (order?.customer_email) {
+      if (status === 'shipped') {
+        await sendOrderShipped(order.customer_email, order.customer_name || 'Customer', req.params.id, tracking_number?.trim() || null);
+      } else if (status === 'delivered') {
+        await sendOrderDelivered(order.customer_email, order.customer_name || 'Customer', req.params.id);
       }
     }
   } catch (e) {
-    console.error('Stage email failed:', e);
+    console.error('Order email failed:', e);
   }
 
-  res.flash('success', `Order #${req.params.id} moved to ${stage.replace(/_/g, ' ')}.`);
+  res.flash('success', `Order #${req.params.id} marked as ${status}.`);
   res.redirect(BASE + '/orders');
 });
 

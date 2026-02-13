@@ -46,7 +46,8 @@ function initSchema() {
 		'ALTER TABLE subscriptions ADD COLUMN next_delivery_date TEXT',
 		'ALTER TABLE subscriptions ADD COLUMN last_fulfilled_at TEXT',
 		'ALTER TABLE products ADD COLUMN stock_quantity INTEGER DEFAULT NULL',
-		'ALTER TABLE subscriptions ADD COLUMN cancel_reason TEXT'
+		'ALTER TABLE subscriptions ADD COLUMN cancel_reason TEXT',
+		'ALTER TABLE orders ADD COLUMN tracking_number TEXT'
 	];
 	for (const stmt of alterStatements) {
 		try { db.exec(stmt); } catch { /* column already exists */ }
