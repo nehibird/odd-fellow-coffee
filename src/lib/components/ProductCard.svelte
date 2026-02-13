@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { cart } from './CartStore';
 	import { onMount } from 'svelte';
+	import ShippingModal from './ShippingModal.svelte';
 
 	export let product: {
 		id: number;
@@ -20,12 +21,10 @@
 		grinds?: string[]
 	} | null = null;
 
-	// Helper function to check if sizes have pricing
 	function checkHasSizePricing(v: typeof variants): boolean {
 		return !!(v?.sizes?.length && typeof v.sizes[0] === 'object' && 'price_cents' in (v.sizes[0] as any));
 	}
 
-	// Parse variants only once on mount
 	onMount(() => {
 		if (product.variants) {
 			try {
@@ -45,10 +44,8 @@
 		}
 	});
 
-	// Check if current variants have pricing
 	$: hasSizePricing = checkHasSizePricing(variants);
 
-	// Get current price based on selected size
 	$: currentPrice = (() => {
 		if (hasSizePricing && selectedSize) {
 			const sizeOption = (variants?.sizes as Array<{ name: string; price_cents: number }>)?.find(s => s.name === selectedSize);
@@ -57,7 +54,6 @@
 		return product.price_cents;
 	})();
 
-	// Build variant string for cart (e.g., "8oz - Medium")
 	$: variantString = [selectedSize, selectedGrind].filter(Boolean).join(' - ') || undefined;
 
 	// Subscription discount (10% off)
@@ -75,7 +71,6 @@
 			variant: variantString,
 			image: product.image || undefined
 		});
-		// Show feedback
 		addedToCart = true;
 		setTimeout(() => { addedToCart = false; }, 2000);
 	}
@@ -84,44 +79,21 @@
 	let showSubscribe = false;
 	let subFrequency = 'weekly';
 	let subEmail = '';
-	let subLoading = false;
 	let subError = '';
+	let showShippingModal = false;
 
-	// First delivery is always ~1 week out (for roasting), regardless of frequency
 	$: estimatedDelivery = (() => {
 		const date = new Date();
 		date.setDate(date.getDate() + 7);
 		return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 	})();
 
-	async function subscribe() {
+	function openShippingModal() {
 		if (!subEmail) { subError = 'Email required'; return; }
-		subLoading = true;
 		subError = '';
-		try {
-			const res = await fetch('/api/subscribe', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					productId: product.id,
-					frequency: subFrequency,
-					email: subEmail,
-					variant: variantString,
-					price_cents: currentPrice
-				})
-			});
-			const data = await res.json();
-			if (data.url) {
-				window.location.href = data.url;
-			} else {
-				subError = data.message || 'Failed to start subscription';
-			}
-		} catch {
-			subError = 'Something went wrong';
-		} finally {
-			subLoading = false;
-		}
+		showShippingModal = true;
 	}
+
 </script>
 
 <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
@@ -130,7 +102,7 @@
 			<img src="/assets/images/products/{product.image}" alt={product.name} class="h-full w-full object-cover" />
 		{:else}
 			<div class="flex h-full items-center justify-center text-gray-400">
-				<span class="text-4xl">☕</span>
+				<span class="text-4xl">&#9749;</span>
 			</div>
 		{/if}
 	</div>
@@ -180,7 +152,7 @@
 		on:click={addToCart}
 		class="mt-3 w-full rounded-full py-2 text-sm font-medium transition-colors {addedToCart ? 'bg-green-600 text-white' : 'bg-black text-white hover:bg-medium-carmine'}"
 	>
-		{addedToCart ? '✓ Added!' : 'Add to Cart'}
+		{addedToCart ? '&#10003; Added!' : 'Add to Cart'}
 	</button>
 
 	{#if product.subscribable}
@@ -212,11 +184,10 @@
 					First delivery: <span class="font-semibold">{estimatedDelivery}</span>
 				</p>
 				<button
-					on:click={subscribe}
-					disabled={subLoading}
-					class="w-full rounded-full bg-medium-carmine py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
+					on:click={openShippingModal}
+					class="w-full rounded-full bg-medium-carmine py-2 text-sm font-medium text-white hover:bg-black"
 				>
-					{subLoading ? 'Processing...' : 'Start Subscription'}
+					Start Subscription
 				</button>
 				<p class="text-center text-xs text-gray-500">Cancel anytime</p>
 				<button on:click={() => (showSubscribe = false)} class="w-full text-xs text-gray-400 hover:text-gray-600">Back</button>
@@ -224,3 +195,16 @@
 		{/if}
 	{/if}
 </div>
+
+{#if showShippingModal}
+	<ShippingModal
+		productId={product.id}
+		productName={product.name}
+		variant={variantString}
+		frequency={subFrequency}
+		email={subEmail}
+		priceCents={currentPrice}
+		{subPrice}
+		on:close={() => (showShippingModal = false)}
+	/>
+{/if}

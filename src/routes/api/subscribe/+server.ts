@@ -1,11 +1,11 @@
 import { json, error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
-import { createSubscriptionCheckout } from '$lib/server/stripe';
+import { createSubscriptionCheckout, getShippingOptions } from '$lib/server/stripe';
 import { SITE_URL } from '$env/static/private';
 import { isValidEmail, isValidFrequency } from '$lib/server/validation';
 
 export async function POST({ request }) {
-	const { productId, frequency, email, variant, price_cents } = await request.json();
+	const { productId, frequency, email, variant, price_cents, shipping } = await request.json();
 	if (!productId || !frequency || !email) {
 		throw error(400, 'productId, frequency, and email required');
 	}
@@ -41,6 +41,12 @@ export async function POST({ request }) {
 	// Build product name with variant and discount
 	const productName = variant ? `${product.name} (${variant})` : product.name;
 
+	// Determine shipping options from address if provided
+	let shippingOption = undefined;
+	if (shipping?.zip) {
+		shippingOption = getShippingOptions(shipping.zip);
+	}
+
 	const session = await createSubscriptionCheckout(
 		productName,
 		finalPrice,
@@ -49,7 +55,8 @@ export async function POST({ request }) {
 		product.id,
 		`${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
 		`${SITE_URL}/checkout/cancel`,
-		variant
+		variant,
+		shippingOption
 	);
 
 	return json({ url: session.url });
