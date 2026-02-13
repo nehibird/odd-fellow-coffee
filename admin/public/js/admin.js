@@ -61,8 +61,13 @@ function submitBulk(status) {
 
 function copyShipping(btn, json) {
   const a = JSON.parse(json);
+  // Strip city name from street line if customer typed it there too
+  let street = a.line1 || '';
+  if (a.city && street.toLowerCase().endsWith(a.city.toLowerCase())) {
+    street = street.slice(0, -a.city.length).trim().replace(/,\s*$/, '');
+  }
   const lines = [a.name];
-  if (a.line1) lines.push(a.line1);
+  if (street) lines.push(street);
   if (a.line2) lines.push(a.line2);
   lines.push([a.city, a.state].filter(Boolean).join(', ') + ' ' + a.zip);
   const text = lines.join('\n');
