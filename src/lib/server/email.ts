@@ -29,7 +29,7 @@ const BRAND = {
 	lightBg: '#f9f6f2',
 	border: '#e8e0d8',
 	textMuted: '#6b6560',
-	logoUrl: `${SITE_URL}/assets/logo-rounded.svg`,
+	logoUrl: `${SITE_URL}/assets/logo.jpeg`,
 	siteUrl: SITE_URL
 };
 
