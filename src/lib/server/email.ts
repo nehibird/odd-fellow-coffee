@@ -57,6 +57,37 @@ export async function sendReservationConfirmation(
 	});
 }
 
+export async function sendCancellationConfirmation(email: string, productName: string) {
+	await transporter.sendMail({
+		from: FROM_EMAIL,
+		to: email,
+		subject: 'Odd Fellow Coffee - Subscription Canceled',
+		html: `
+			<h2>We're sorry to see you go</h2>
+			<p>Your subscription for <strong>${esc(productName)}</strong> has been set to cancel at the end of your current billing period.</p>
+			<p>You'll continue to receive your deliveries until then.</p>
+			<p>If you change your mind, you can resubscribe anytime at our store.</p>
+			<p>Thanks for being a customer — we hope to see you again!</p>
+			<p>- Odd Fellow Coffee Roasters</p>
+		`
+	});
+}
+
+export async function sendPaymentFailed(email: string, updateUrl: string) {
+	await transporter.sendMail({
+		from: FROM_EMAIL,
+		to: email,
+		subject: 'Odd Fellow Coffee - Payment Failed',
+		html: `
+			<h2>We had trouble processing your payment</h2>
+			<p>Your recent subscription payment didn't go through. Please update your payment method to keep your subscription active.</p>
+			<p><a href="${esc(updateUrl)}" style="display:inline-block;padding:10px 20px;background:#000;color:#fff;text-decoration:none;border-radius:6px;">Update Payment</a></p>
+			<p>If you have any questions, just reply to this email.</p>
+			<p>- Odd Fellow Coffee Roasters</p>
+		`
+	});
+}
+
 export async function sendSubscriptionFulfilled(
 	email: string,
 	productName: string,

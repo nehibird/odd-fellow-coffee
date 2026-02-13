@@ -17,6 +17,7 @@ import subscriptionRoutes from './routes/subscriptions.js';
 import reservationRoutes from './routes/reservations.js';
 import slotRoutes from './routes/slots.js';
 import dropRoutes from './routes/drops.js';
+import calendarRoutes from './routes/calendar.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -64,6 +65,7 @@ app.use('/subscriptions', requireAuth, subscriptionRoutes);
 app.use('/reservations', requireAuth, reservationRoutes);
 app.use('/slots', requireAuth, slotRoutes);
 app.use('/drops', requireAuth, dropRoutes);
+app.use('/calendar', requireAuth, calendarRoutes);
 
 app.listen(PORT, () => {
   console.log(`Odd Fellow Admin running on http://localhost:${PORT}`);

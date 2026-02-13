@@ -18,6 +18,7 @@
           <th>Name</th>
           <th>Category</th>
           <th>Price</th>
+          <th>Stock</th>
           <th>Subscribable</th>
           <th>Status</th>
           <th>Actions</th>
@@ -44,6 +45,17 @@
             </td>
             <td><span class="badge bg-light text-dark"><%= p.category %></span></td>
             <td><%= helpers.formatCents(p.price_cents) %></td>
+            <td>
+              <% if (p.stock_quantity == null) { %>
+                <span class="text-muted">-</span>
+              <% } else if (p.stock_quantity === 0) { %>
+                <span class="badge bg-danger">OUT OF STOCK</span>
+              <% } else if (p.stock_quantity <= 5) { %>
+                <span class="badge bg-warning text-dark"><%= p.stock_quantity %></span>
+              <% } else { %>
+                <%= p.stock_quantity %>
+              <% } %>
+            </td>
             <td><%= p.subscribable ? 'Yes' : 'No' %></td>
             <td>
               <% if (p.active) { %>

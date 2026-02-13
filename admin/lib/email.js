@@ -23,6 +23,34 @@ function esc(str) {
     .replace(/'/g, '&#39;');
 }
 
+export async function sendOrderReady(email, name, orderId) {
+  await getTransporter().sendMail({
+    from: process.env.FROM_EMAIL,
+    to: email,
+    subject: `Odd Fellow Coffee - Order #${orderId} Ready for Pickup!`,
+    html: `
+      <h2>Your order is ready, ${esc(name)}!</h2>
+      <p>Order #${esc(String(orderId))} is packed and waiting for you.</p>
+      <p>Come pick it up at your convenience during our business hours.</p>
+      <p>- Odd Fellow Coffee Roasters</p>
+    `
+  });
+}
+
+export async function sendOrderShipped(email, name, orderId) {
+  await getTransporter().sendMail({
+    from: process.env.FROM_EMAIL,
+    to: email,
+    subject: `Odd Fellow Coffee - Order #${orderId} Shipped!`,
+    html: `
+      <h2>Your order is on its way, ${esc(name)}!</h2>
+      <p>Order #${esc(String(orderId))} has been shipped.</p>
+      <p>Keep an eye on your mailbox — it should arrive soon!</p>
+      <p>- Odd Fellow Coffee Roasters</p>
+    `
+  });
+}
+
 export async function sendSubscriptionFulfilled(email, productName, variant, nextDeliveryDate) {
   const variantText = variant ? ` (${esc(variant)})` : '';
   await getTransporter().sendMail({

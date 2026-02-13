@@ -2,7 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { stripe } from '$lib/server/stripe';
 import { STRIPE_WEBHOOK_SECRET } from '$env/static/private';
 import { getDb } from '$lib/server/db';
-import { sendOrderConfirmation } from '$lib/server/email';
+import { sendOrderConfirmation, sendPaymentFailed } from '$lib/server/email';
 import { createEmailToken } from '$lib/server/validation';
 
 export async function POST({ request }) {
@@ -109,6 +109,19 @@ export async function POST({ request }) {
 				} else {
 					db.prepare('UPDATE orders SET status = ?, customer_email = ?, customer_name = ? WHERE id = ?').run('confirmed', customerEmail, customerName, order.id);
 				}
+				// Decrement stock for tracked products
+				try {
+					const orderItems = JSON.parse(order.items) as { productId: number; quantity: number }[];
+					for (const item of orderItems) {
+						if (item.productId) {
+							db.prepare(
+								'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity IS NOT NULL'
+							).run(item.quantity || 1, item.productId);
+						}
+					}
+				} catch (e) {
+					console.error('Stock decrement failed:', e);
+				}
 				try {
 					await sendOrderConfirmation(customerEmail, customerName, order.id, order.total_cents);
 				} catch (e) {
@@ -162,6 +175,26 @@ export async function POST({ request }) {
 		db.prepare(
 			"UPDATE subscriptions SET status = 'canceled' WHERE stripe_subscription_id = ?"
 		).run(sub.id);
+	}
+
+	if (event.type === 'invoice.payment_failed') {
+		const invoice = event.data.object as any;
+		const subId = invoice.subscription;
+		if (subId) {
+			db.prepare(
+				"UPDATE subscriptions SET status = 'past_due' WHERE stripe_subscription_id = ?"
+			).run(subId);
+			const localSub = db.prepare(
+				'SELECT customer_email FROM subscriptions WHERE stripe_subscription_id = ?'
+			).get(subId) as any;
+			if (localSub?.customer_email) {
+				try {
+					await sendPaymentFailed(localSub.customer_email, invoice.hosted_invoice_url || '');
+				} catch (e) {
+					console.error('Payment failed email error:', e);
+				}
+			}
+		}
 	}
 
 	return json({ received: true });

@@ -25,10 +25,20 @@
 <% if (orders.length === 0) { %>
   <p class="text-muted">No orders found.</p>
 <% } else { %>
+  <div id="bulk-bar" class="alert alert-info d-flex align-items-center gap-2 mb-3" style="display: none !important;">
+    <span><strong id="bulk-count">0</strong> selected</span>
+    <form method="POST" action="<%= base %>/orders/bulk-status" id="bulk-form" class="d-inline">
+      <input type="hidden" name="status" id="bulk-status-val">
+      <div id="bulk-ids"></div>
+      <button type="button" class="btn btn-sm btn-primary" onclick="submitBulk('confirmed')">Bulk Confirm</button>
+      <button type="button" class="btn btn-sm btn-success" onclick="submitBulk('fulfilled')">Bulk Fulfill</button>
+    </form>
+  </div>
   <div class="table-responsive">
     <table class="table table-hover align-middle">
       <thead class="table-light">
         <tr>
+          <th><input type="checkbox" id="select-all"></th>
           <th>#</th>
           <th>Customer</th>
           <th>Items</th>
@@ -44,6 +54,7 @@
           <% const addr = helpers.parseAddress(order.shipping_address); %>
           <% const items = helpers.parseItems(order.items); %>
           <tr>
+            <td><input type="checkbox" class="order-check" value="<%= order.id %>"></td>
             <td><strong><%= order.id %></strong></td>
             <td>
               <div><%= order.customer_name || 'N/A' %></div>
