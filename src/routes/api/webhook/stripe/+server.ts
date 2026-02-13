@@ -3,7 +3,6 @@ import { stripe } from '$lib/server/stripe';
 import { STRIPE_WEBHOOK_SECRET } from '$env/static/private';
 import { getDb } from '$lib/server/db';
 import { sendOrderConfirmation, sendPaymentFailed } from '$lib/server/email';
-import { createEmailToken } from '$lib/server/validation';
 
 export async function POST({ request }) {
 	const body = await request.text();
