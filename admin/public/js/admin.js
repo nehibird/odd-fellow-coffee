@@ -65,10 +65,18 @@ function copyShipping(btn, json) {
   if (a.line1) lines.push(a.line1);
   if (a.line2) lines.push(a.line2);
   lines.push([a.city, a.state].filter(Boolean).join(', ') + ' ' + a.zip);
-  navigator.clipboard.writeText(lines.join('\n')).then(() => {
-    const orig = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
-    btn.classList.replace('btn-outline-secondary', 'btn-success');
-    setTimeout(() => { btn.innerHTML = orig; btn.classList.replace('btn-success', 'btn-outline-secondary'); }, 1500);
-  });
+  const text = lines.join('\n');
+  // execCommand fallback for HTTP (navigator.clipboard requires HTTPS)
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+  btn.classList.replace('btn-outline-secondary', 'btn-success');
+  setTimeout(() => { btn.innerHTML = orig; btn.classList.replace('btn-success', 'btn-outline-secondary'); }, 1500);
 }
