@@ -2,7 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { stripe } from '$lib/server/stripe';
 import { STRIPE_WEBHOOK_SECRET } from '$env/static/private';
 import { getDb } from '$lib/server/db';
-import { sendOrderConfirmation, sendPaymentFailed } from '$lib/server/email';
+import { sendOrderConfirmation, sendPaymentFailed, sendSubscriptionConfirmation } from '$lib/server/email';
 
 export async function POST({ request }) {
 	const body = await request.text();
@@ -79,6 +79,26 @@ export async function POST({ request }) {
 					shippingAddress,
 					nextDelivery.toISOString().split('T')[0]
 				);
+
+				// Send subscription confirmation email
+				if (session.customer_email) {
+					try {
+						const product = productId ? db.prepare('SELECT name FROM products WHERE id = ?').get(Number(productId)) as any : null;
+						const productDisplayName = product?.name || 'Coffee Subscription';
+						const shippingCents = session.metadata?.shipping_cents ? Number(session.metadata.shipping_cents) : 0;
+						await sendSubscriptionConfirmation(
+							session.customer_email,
+							productDisplayName,
+							variant || null,
+							frequency || 'monthly',
+							priceCents || 0,
+							shippingCents,
+							nextDelivery.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+						);
+					} catch (e) {
+						console.error('Subscription confirmation email failed:', e);
+					}
+				}
 			}
 		} else {
 			// One-time payment — retrieve full session for shipping details

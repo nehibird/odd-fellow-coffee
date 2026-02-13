@@ -5,12 +5,12 @@
 	export let productName: string;
 	export let variant: string | undefined;
 	export let frequency: string;
-	export let email: string;
 	export let priceCents: number;
 	export let subPrice: number;
 
 	const dispatch = createEventDispatcher();
 
+	let email = '';
 	let shippingName = '';
 	let line1 = '';
 	let line2 = '';
@@ -35,6 +35,8 @@
 	];
 
 	function validate(): string | null {
+		if (!email.trim()) return 'Email is required';
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return 'Enter a valid email address';
 		if (!shippingName.trim()) return 'Full name is required';
 		if (!line1.trim()) return 'Address is required';
 		if (!city.trim()) return 'City is required';
@@ -57,7 +59,7 @@
 				body: JSON.stringify({
 					productId,
 					frequency,
-					email,
+					email: email.trim(),
 					variant,
 					price_cents: priceCents,
 					shipping: {
@@ -117,6 +119,10 @@
 		</div>
 
 		<form on:submit|preventDefault={submit} class="space-y-3">
+			<div>
+				<label for="ship-email" class="block text-xs font-medium text-gray-700">Email</label>
+				<input id="ship-email" type="email" bind:value={email} autocomplete="email" placeholder="your@email.com" class="mt-1 w-full rounded-lg border px-3 py-2 text-sm" />
+			</div>
 			<div>
 				<label for="ship-name" class="block text-xs font-medium text-gray-700">Full Name</label>
 				<input id="ship-name" type="text" bind:value={shippingName} autocomplete="name" class="mt-1 w-full rounded-lg border px-3 py-2 text-sm" />

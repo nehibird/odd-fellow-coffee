@@ -270,6 +270,78 @@ ${btn(BRAND.siteUrl, 'Visit Our Site')}
 	});
 }
 
+export async function sendSubscriptionConfirmation(
+	email: string,
+	productName: string,
+	variant: string | null,
+	frequency: string,
+	priceCents: number,
+	shippingCents: number,
+	nextDeliveryDate: string
+) {
+	const variantText = variant ? ` (${esc(variant)})` : '';
+	const freqLabel = frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Every 2 Weeks' : 'Monthly';
+	const freqShort = frequency === 'weekly' ? '/wk' : frequency === 'biweekly' ? '/2wk' : '/mo';
+	const totalCents = priceCents + shippingCents;
+
+	const html = emailShell(`
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Subscription Confirmed</p>
+<h1 style="margin:0 0 8px;font-size:28px;color:${BRAND.dark};">Welcome to the club!</h1>
+<p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};">Your subscription is all set. Fresh-roasted coffee, delivered on your schedule.</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background-color:${BRAND.lightBg};border-radius:8px;width:100%;">
+<tr><td style="padding:20px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td>
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Your Subscription</p>
+<p style="margin:0 0 8px;font-size:16px;font-weight:700;color:${BRAND.dark};">${esc(productName)}${variantText}</p>
+<p style="margin:0 0 4px;font-size:14px;color:${BRAND.textMuted};">${freqLabel} delivery</p>
+</td>
+</tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;border-top:1px solid ${BRAND.border};padding-top:12px;">
+<tr>
+<td style="font-size:13px;color:${BRAND.textMuted};">Coffee</td>
+<td align="right" style="font-size:13px;">$${(priceCents / 100).toFixed(2)}</td>
+</tr>
+<tr>
+<td style="font-size:13px;color:${BRAND.textMuted};">Shipping</td>
+<td align="right" style="font-size:13px;">${shippingCents === 0 ? 'FREE' : '$' + (shippingCents / 100).toFixed(2)}</td>
+</tr>
+<tr>
+<td style="padding-top:8px;border-top:1px solid ${BRAND.border};font-size:15px;font-weight:700;">Total</td>
+<td align="right" style="padding-top:8px;border-top:1px solid ${BRAND.border};font-size:15px;font-weight:700;">$${(totalCents / 100).toFixed(2)}${freqShort}</td>
+</tr>
+</table>
+</td></tr>
+</table>
+
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;border:1px solid ${BRAND.border};border-radius:8px;width:100%;">
+<tr><td style="padding:16px;">
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">First Delivery</p>
+<p style="margin:0;font-size:18px;font-weight:700;color:${BRAND.dark};">${esc(nextDeliveryDate)}</p>
+</td></tr>
+</table>
+
+${divider()}
+
+<p style="text-align:center;margin:0 0 16px;">
+${btn(BRAND.siteUrl + '/subscriptions', 'Manage Subscription')}
+</p>
+
+<p style="text-align:center;margin:0;font-size:13px;color:${BRAND.textMuted};">You can pause or cancel anytime. Questions? Just reply to this email.</p>
+`);
+
+	await transporter.sendMail({
+		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		to: email,
+		subject: 'Subscription Confirmed - Odd Fellow Coffee',
+		html
+	});
+}
+
 export async function sendCancellationConfirmation(email: string, productName: string) {
 	const html = emailShell(`
 <p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Subscription Update</p>
