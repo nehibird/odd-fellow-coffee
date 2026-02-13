@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { cart, type CartItem } from '$lib/components/CartStore';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { PUBLIC_STRIPE_PUBLISHABLE_KEY } from '$env/static/public';
 
 	let items: CartItem[] = [];
@@ -51,8 +51,8 @@
 
 			showCheckout = true;
 
-			// Wait for DOM to render the checkout container
-			await new Promise((r) => setTimeout(r, 50));
+			// Wait for Svelte to render the checkout container
+			await tick();
 
 			stripeCheckout = await stripe.initEmbeddedCheckout({
 				clientSecret: data.clientSecret,
