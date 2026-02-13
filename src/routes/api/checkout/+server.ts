@@ -5,7 +5,7 @@ import { SITE_URL } from '$env/static/private';
 import { isValidEmail } from '$lib/server/validation';
 
 export async function POST({ request }) {
-	const { items, email, name, reservationData, dropId } = await request.json();
+	const { items, email, name, reservationData, dropId, zip } = await request.json();
 
 	if (!items?.length) {
 		throw error(400, 'Items required');
@@ -118,11 +118,12 @@ export async function POST({ request }) {
 	}
 
 	const collectShipping = !reservationData;
+	const isLocalDelivery = zip === '74653';
 	const session = await createCheckoutSession(
 		lineItems, email,
 		`${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`,
 		`${SITE_URL}/checkout/cancel`,
-		{ collectShipping }
+		{ collectShipping, localOnly: isLocalDelivery }
 	);
 	db.prepare('UPDATE orders SET stripe_session_id = ? WHERE id = ?').run(session.id, orderId);
 

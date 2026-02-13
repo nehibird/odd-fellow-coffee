@@ -91,7 +91,7 @@
             <td><small><%= helpers.formatDate(order.created_at) %></small></td>
             <td class="text-nowrap">
               <% if (addr) { %>
-                <button class="btn btn-sm btn-outline-secondary mb-1" title="Copy shipping address for Pirate Ship" onclick="copyShipping(this, <%= JSON.stringify(JSON.stringify({ name: order.shipping_name || order.customer_name || '', line1: addr.line1 || '', line2: addr.line2 || '', city: addr.city || '', state: addr.state || '', zip: addr.postal_code || '' })) %>)">
+                <button class="btn btn-sm btn-outline-secondary mb-1" title="Copy shipping address for Pirate Ship" onclick="copyShipping(this, <%= JSON.stringify(JSON.stringify({ name: order.shipping_name || order.customer_name || '', email: order.customer_email || '', line1: addr.line1 || '', line2: addr.line2 || '', city: addr.city || '', state: addr.state || '', zip: addr.postal_code || '' })) %>)">
                   <i class="bi bi-clipboard"></i> Copy Address
                 </button>
               <% } %>
