@@ -87,8 +87,16 @@ export async function POST({ request }) {
 			}) as any;
 			const order = db.prepare('SELECT * FROM orders WHERE stripe_session_id = ?').get(session.id) as any;
 			if (order) {
-				const customerEmail = session.customer_email || session.customer_details?.email || order.customer_email;
+				const customerEmail = session.customer_email || session.customer_details?.email || fullSession.customer_details?.email || fullSession.customer_email || order.customer_email;
 				const customerName = fullSession.shipping_details?.name || fullSession.customer_details?.name || order.customer_name || '';
+				console.log('Webhook checkout.session.completed — email sources:', {
+					'session.customer_email': session.customer_email,
+					'session.customer_details?.email': session.customer_details?.email,
+					'fullSession.customer_details?.email': fullSession.customer_details?.email,
+					'fullSession.customer_email': fullSession.customer_email,
+					'order.customer_email': order.customer_email,
+					resolved: customerEmail
+				});
 				const shipping = fullSession.shipping_details;
 				const shippingCost = fullSession.shipping_cost;
 				if (shipping?.address) {
