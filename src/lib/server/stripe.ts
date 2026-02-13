@@ -115,37 +115,63 @@ export async function createSubscriptionCheckout(
 	successUrl: string,
 	cancelUrl: string,
 	variant?: string,
-	shippingOption?: Stripe.Checkout.SessionCreateParams.ShippingOption[]
+	shippingCents?: number,
+	shippingAddress?: { name: string; line1: string; line2?: string; city: string; state: string; zip: string }
 ) {
 	const recurring = FREQUENCY_MAP[frequency];
 	if (!recurring) throw new Error(`Invalid frequency: ${frequency}`);
 
 	const frequencyLabel = frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Every 2 Weeks' : 'Monthly';
 
+	const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+		{
+			price_data: {
+				currency: 'usd',
+				product_data: { name: `${productName} — ${frequencyLabel}` },
+				unit_amount: priceCents,
+				recurring
+			},
+			quantity: 1
+		}
+	];
+
+	// Add shipping as a recurring line item (Stripe doesn't support shipping_options in subscription mode)
+	if (shippingCents && shippingCents > 0) {
+		lineItems.push({
+			price_data: {
+				currency: 'usd',
+				product_data: { name: 'Shipping (USPS Flat Rate)' },
+				unit_amount: shippingCents,
+				recurring
+			},
+			quantity: 1
+		});
+	}
+
 	return stripe.checkout.sessions.create({
 		payment_method_types: ['card'],
-		line_items: [
-			{
-				price_data: {
-					currency: 'usd',
-					product_data: { name: `${productName} — ${frequencyLabel}` },
-					unit_amount: priceCents,
-					recurring
-				},
-				quantity: 1
-			}
-		],
+		line_items: lineItems,
 		mode: 'subscription',
 		customer_email: customerEmail,
 		success_url: successUrl,
 		cancel_url: cancelUrl,
-		shipping_address_collection: { allowed_countries: ['US'] },
-		...(shippingOption ? { shipping_options: shippingOption } : {}),
 		metadata: {
 			product_id: String(productId),
 			frequency,
 			variant: variant || '',
-			price_cents: String(priceCents)
+			price_cents: String(priceCents),
+			shipping_cents: String(shippingCents || 0),
+			...(shippingAddress ? {
+				shipping_name: shippingAddress.name,
+				shipping_address: JSON.stringify({
+					line1: shippingAddress.line1,
+					line2: shippingAddress.line2 || '',
+					city: shippingAddress.city,
+					state: shippingAddress.state,
+					postal_code: shippingAddress.zip,
+					country: 'US'
+				})
+			} : {})
 		}
 	});
 }

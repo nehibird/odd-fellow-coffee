@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
-import { createSubscriptionCheckout, getShippingOptions } from '$lib/server/stripe';
+import { createSubscriptionCheckout, LOCAL_ZIP } from '$lib/server/stripe';
 import { SITE_URL } from '$env/static/private';
 import { isValidEmail, isValidFrequency } from '$lib/server/validation';
 
@@ -41,11 +41,8 @@ export async function POST({ request }) {
 	// Build product name with variant and discount
 	const productName = variant ? `${product.name} (${variant})` : product.name;
 
-	// Determine shipping options from address if provided
-	let shippingOption = undefined;
-	if (shipping?.zip) {
-		shippingOption = getShippingOptions(shipping.zip);
-	}
+	// Determine shipping cost from zip (0 for local, 599 for out-of-area)
+	const shippingCents = shipping?.zip === LOCAL_ZIP ? 0 : 599;
 
 	const session = await createSubscriptionCheckout(
 		productName,
@@ -56,7 +53,8 @@ export async function POST({ request }) {
 		`${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
 		`${SITE_URL}/checkout/cancel`,
 		variant,
-		shippingOption
+		shippingCents,
+		shipping ? { name: shipping.name, line1: shipping.line1, line2: shipping.line2, city: shipping.city, state: shipping.state, zip: shipping.zip } : undefined
 	);
 
 	return json({ url: session.url });
