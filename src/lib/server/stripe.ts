@@ -11,12 +11,16 @@ interface LineItem {
 	quantity: number;
 }
 
+/**
+ * Create an embedded checkout session for one-time orders.
+ * Returns { clientSecret, sessionId } for mounting on the client.
+ * Shipping is determined dynamically via onShippingDetailsChange callback.
+ */
 export async function createCheckoutSession(
 	items: LineItem[],
 	customerEmail: string | undefined,
-	successUrl: string,
-	cancelUrl: string,
-	opts?: { collectShipping?: boolean; localOnly?: boolean }
+	returnUrl: string,
+	opts?: { collectShipping?: boolean }
 ) {
 	const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item) => ({
 		price_data: {
@@ -31,49 +35,31 @@ export async function createCheckoutSession(
 		payment_method_types: ['card'],
 		line_items: lineItems,
 		mode: 'payment',
-		success_url: successUrl,
-		cancel_url: cancelUrl
+		ui_mode: 'embedded',
+		return_url: returnUrl
 	};
 
-	// Only pre-fill email if provided; otherwise Stripe will collect it
 	if (customerEmail) {
 		sessionParams.customer_email = customerEmail;
 	}
 
 	if (opts?.collectShipping) {
 		sessionParams.shipping_address_collection = { allowed_countries: ['US'] };
-		if (opts.localOnly) {
-			sessionParams.shipping_options = [
-				{
-					shipping_rate_data: {
-						type: 'fixed_amount',
-						fixed_amount: { amount: 0, currency: 'usd' },
-						display_name: 'Free Local Delivery (Tonkawa area)',
-						delivery_estimate: {
-							minimum: { unit: 'business_day', value: 1 },
-							maximum: { unit: 'business_day', value: 2 }
-						}
-					}
+		// Placeholder shipping option — will be replaced dynamically via onShippingDetailsChange
+		sessionParams.shipping_options = [
+			{
+				shipping_rate_data: {
+					type: 'fixed_amount',
+					fixed_amount: { amount: 0, currency: 'usd' },
+					display_name: 'Calculated at next step'
 				}
-			];
-		} else {
-			sessionParams.shipping_options = [
-				{
-					shipping_rate_data: {
-						type: 'fixed_amount',
-						fixed_amount: { amount: 599, currency: 'usd' },
-						display_name: 'Flat Rate Shipping (USPS, 3-5 business days)',
-						delivery_estimate: {
-							minimum: { unit: 'business_day', value: 3 },
-							maximum: { unit: 'business_day', value: 5 }
-						}
-					}
-				}
-			];
-		}
+			}
+		];
+		(sessionParams as any).permissions = { update_shipping_details: 'server_only' };
 	}
 
-	return stripe.checkout.sessions.create(sessionParams);
+	const session = await stripe.checkout.sessions.create(sessionParams);
+	return { clientSecret: session.client_secret!, sessionId: session.id };
 }
 
 const FREQUENCY_MAP: Record<string, { interval: 'week' | 'month'; interval_count: number }> = {
@@ -82,6 +68,44 @@ const FREQUENCY_MAP: Record<string, { interval: 'week' | 'month'; interval_count
 	monthly: { interval: 'month', interval_count: 1 }
 };
 
+export const LOCAL_ZIP = '74653';
+
+export function getShippingOptions(zip: string): Stripe.Checkout.SessionCreateParams.ShippingOption[] {
+	if (zip === LOCAL_ZIP) {
+		return [
+			{
+				shipping_rate_data: {
+					type: 'fixed_amount',
+					fixed_amount: { amount: 0, currency: 'usd' },
+					display_name: 'Free Local Delivery (Tonkawa area)',
+					delivery_estimate: {
+						minimum: { unit: 'business_day', value: 1 },
+						maximum: { unit: 'business_day', value: 2 }
+					}
+				}
+			}
+		];
+	}
+	return [
+		{
+			shipping_rate_data: {
+				type: 'fixed_amount',
+				fixed_amount: { amount: 599, currency: 'usd' },
+				display_name: 'Flat Rate Shipping (USPS, 3-5 business days)',
+				delivery_estimate: {
+					minimum: { unit: 'business_day', value: 3 },
+					maximum: { unit: 'business_day', value: 5 }
+				}
+			}
+		}
+	];
+}
+
+/**
+ * Create a hosted checkout session for subscriptions.
+ * Subscriptions stay on hosted mode since Stripe doesn't support
+ * dynamic shipping in subscription embedded checkout.
+ */
 export async function createSubscriptionCheckout(
 	productName: string,
 	priceCents: number,
@@ -90,7 +114,8 @@ export async function createSubscriptionCheckout(
 	productId: number,
 	successUrl: string,
 	cancelUrl: string,
-	variant?: string
+	variant?: string,
+	shippingOption?: Stripe.Checkout.SessionCreateParams.ShippingOption[]
 ) {
 	const recurring = FREQUENCY_MAP[frequency];
 	if (!recurring) throw new Error(`Invalid frequency: ${frequency}`);
@@ -115,6 +140,7 @@ export async function createSubscriptionCheckout(
 		success_url: successUrl,
 		cancel_url: cancelUrl,
 		shipping_address_collection: { allowed_countries: ['US'] },
+		...(shippingOption ? { shipping_options: shippingOption } : {}),
 		metadata: {
 			product_id: String(productId),
 			frequency,

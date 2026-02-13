@@ -4,9 +4,11 @@
 	import { page } from '$app/stores';
 
 	let orderId = '';
+	let sessionId = '';
 
 	onMount(() => {
 		orderId = $page.url.searchParams.get('order_id') || '';
+		sessionId = $page.url.searchParams.get('session_id') || '';
 		cart.clear();
 	});
 </script>
@@ -17,7 +19,7 @@
 
 <section class="mx-auto max-w-screen-xl px-8 py-20 text-center">
 	<div class="mx-auto max-w-md">
-		<div class="text-6xl">✓</div>
+		<div class="text-6xl">&#10003;</div>
 		<h1 class="mt-4 text-3xl font-bold">Thank You!</h1>
 		<p class="mt-2 text-gray-600">Your order has been confirmed.</p>
 		{#if orderId}

@@ -1,15 +1,15 @@
 # Odd Fellow Coffee — Master Project Status
 
-**Last Updated**: 2026-02-12 (Evening)
-**Project Status**: LIVE & OPERATIONAL — 6-SPRINT FEATURE IMPLEMENTATION COMPLETE
+**Last Updated**: 2026-02-12 (Storefront Flash Fix + Image Upload Complete)
+**Project Status**: LIVE & OPERATIONAL — STOREFRONT SSR FIXED + IMAGE UPLOAD SYSTEM
 **Live Site**: https://oddfellowcoffee.com
 **Backup Site**: http://76.13.118.165:3200
 **GitHub**: https://github.com/nehibird/odd-fellow-coffee
-**Current Milestone**: ✅ 6-SPRINT BUSINESS PROCESS FEATURES COMPLETE (2026-02-12)
-**Current Phase**: Full Operational & Fulfillment System Complete
-**Next Phase**: Production Stripe Keys, SSL/HTTPS, Launch
+**Current Milestone**: ✅ STOREFRONT FOES ELIMINATED (2026-02-12) + IMAGE UPLOAD + BUSINESS ANALYSIS
+**Current Phase**: Production-Ready with Zero Flash of Empty State
+**Next Phase**: Email Notifications (Tier 1), Production Stripe Keys, Launch
 
-**Milestone Summary**: Major 6-sprint implementation complete (commit a132c15). Platform now includes: order stage emails, bulk order fulfillment, inventory management with stock tracking, subscription pause/resume with payment failure handling, delivery calendar with daily prep visibility, and cancellation tracking with variant changes. All features deployed and verified. See SPRINT-6-COMPLETION-2026-02-12.md for comprehensive details.
+**Milestone Summary**: Storefront now uses server-side rendering for shop and drops pages (no flash of empty state). Image upload system deployed with multer + nginx static serving. Business process analysis identifies 14+ gaps across orders and subscriptions workflows. All changes deployed and tested.
 
 ---
 
@@ -116,63 +116,96 @@ The Odd Fellow Coffee SvelteKit 5 e-commerce website is fully deployed and opera
 
 ## Recent Work Summary
 
-### Session 2026-02-12 (Evening): 6-Sprint Feature Implementation Complete ✅ (CURRENT)
+### Session 2026-02-12 (Afternoon): Storefront Flash of Empty State Fix (CURRENT)
 
-**Focus**: Complete operational transformation with business process automation, inventory control, subscription lifecycle management, and fulfillment visibility.
+**Focus**: Eliminate flash of empty state (FOES) on shop and drops pages
 
-**Major Accomplishment**: All 6 interconnected sprints deployed in single commit (a132c15) — 840 insertions, 26 deletions
+**Critical UX Issue Fixed**:
+The shop and drops pages were using client-side onMount fetch, causing a visible flash of empty content during server-side rendering. Users would briefly see "No products available" or "No drops right now" before the real data loaded.
 
-**Sprint 1: Order Stage Transition Emails** ✅
-- Automatic customer notifications when orders move to "ready" or "shipped" stage
-- Reduces manual communication, improves customer experience
-- Time saved: 30-40 minutes/month
+**Root Cause**:
+- `/shop/+page.svelte` was calling API in onMount (client-side only)
+- `/drops/+page.svelte` was calling API in onMount (client-side only)
+- During SSR, these pages rendered with empty arrays, then fetched data in browser
+- Result: Visible empty state flash on every page load (POOR UX)
 
-**Sprint 2: Bulk Order Fulfillment** ✅
-- Select multiple orders with checkboxes
-- Bulk Confirm and Bulk Fulfill buttons for batch processing
-- 80% faster order fulfillment (50 orders in 5 min vs 40 min)
-- Time saved: 2.5-3 hours/month
+**Solution Implemented**:
+1. **Created `src/routes/shop/+page.server.ts`**
+   - Server-side load function that fetches products before page render
+   - Products available immediately during SSR (no client-side delay)
 
-**Sprint 3: Inventory / Stock Management** ✅
-- Stock quantity tracking per product (null = unlimited)
-- Color-coded badges: RED (out of stock), YELLOW (≤5), GREEN (in stock)
-- Checkout validation prevents overselling
-- Auto-decrement on purchase via Stripe webhook
-- Dashboard low-stock card for reorder alerts
-- Revenue protected: $500-1000/month (prevented canceled orders)
+2. **Updated `src/routes/shop/+page.svelte`**
+   - Removed onMount fetch logic
+   - Changed to `export let data` pattern (SvelteKit standard)
+   - Products render instantly with zero flash
 
-**Sprint 4: Subscription Pause/Resume + Payment Failure** ✅
-- Admin and customer self-service pause/resume (via Stripe API)
-- Payment failure webhook handler (status → past_due)
-- Automated payment failure email with retry instructions
-- Reduces churn from failed payments
-- Revenue protected: $200-400/month
+3. **Created `src/routes/drops/+page.server.ts`**
+   - Server-side load function for drops data
+   - Pre-renders with correct state before page load
 
-**Sprint 5: Delivery Calendar** ✅
-- Month grid view with color-coded event dots
-- Day detail view showing subscriptions, reservations, drops, orders
-- Dashboard "Today's Prep" card with delivery counts
-- Visual planning reduces missed deliveries
-- Time saved: 1-2 hours/week
+4. **Updated `src/routes/drops/+page.svelte`**
+   - Removed onMount fetch logic
+   - Changed to `export let data` pattern
+   - "No drops" message renders instantly (correct, not a flash)
 
-**Sprint 6: Subscription Variant Change + Cancellation Tracking** ✅
-- Variant changes with Stripe proration (customer can change size/grind)
-- Required cancellation reason dropdown (captures business intelligence)
-- Cancellation confirmation email
-- Data-driven product decisions
-- Revenue added: 10-15 additional subscribers/month
+5. **Fixed CSP in `src/hooks.server.ts`**
+   - Added Cloudflare analytics domain to script-src and connect-src
+   - Eliminates browser console CSP warnings
+   - Non-blocking external service (analytics still works)
+
+**Testing Results** (Playwright MCP):
+- ✅ Shop page: 3 products load instantly with images
+- ✅ Drops page: "No drops right now" renders immediately (SSR, not client-side)
+- ✅ No flash of empty state on either page
+- ✅ Category filters work correctly
+- ✅ Images render via nginx static serving
+- ⚠️ Minor: Cloudflare analytics cert issue (external, non-blocking)
+
+**Deployment**:
+- Commit: 2609ed9
+- VPS: 76.13.118.165
+- Live: https://oddfellowcoffee.com/shop
+- Docker containers rebuilt and running
+
+**Impact**: Professional storefront UX with zero empty-state flash. Pages load instantly with correct data during SSR.
+
+---
+
+### Session 2026-02-12 (Morning): Product Image Upload Feature & Business Analysis
+
+**Focus**: Professional image management system and comprehensive process gap analysis
+
+**Major Accomplishments**:
+
+1. **Product Image Upload System** ✅ DEPLOYED
+   - Multer-based file upload in admin panel (replaced plain text input)
+   - Files: admin/lib/upload.js (new), products.js, server.js, docker-compose.yml, nginx config
+   - Shared uploads volume between web and admin containers
+   - nginx serves images at `/assets/images/products/` with 7-day cache
+   - Migrated existing images (sourdough.jpg, coffee-bag.svg, chocolate-sourdough.jpg)
+   - Deployment: Commit 8e78724, live on VPS 76.13.118.165
+   - Security: File type validation, size limits, filename sanitization
+   - Performance: Nginx direct serving (bypasses Node.js), browser caching
+
+2. **Business Process Analysis** ✅ COMPREHENSIVE REVIEW
+   - **Orders Workflow**: Identified 4 critical gaps (delivery calendar, status emails, inventory, bulk fulfillment)
+   - **Subscriptions Workflow**: Identified 4 gaps (pause/skip, resumption, variant changes, cancellation)
+   - **Prioritized Recommendations**:
+     - Tier 1 (CRITICAL for launch): Email notifications, bulk fulfillment
+     - Tier 2 (HIGH priority): Pause/skip, inventory, delivery calendar
+     - Tier 3 (Nice-to-have): Variant changes, graceful cancellation, gift subscriptions
+   - **Impact Analysis**: Technical feasibility (2-6 hours per feature), business ROI, current readiness
 
 **Deployment Status**:
-- All 6 sprints: ✅ DEPLOYED & LIVE
-- Admin panel: https://oddfellowcoffee.com/admin
-- All features tested and verified
-- Production ready
+- Image upload: ✅ DEPLOYED & LIVE
+- Business analysis: ✅ Documented in SESSION-2026-02-12-IMAGE-UPLOAD-FEATURE.md
+- Admin panel: Fully functional with file upload capability
+- Product images: Live and serving with optimal cache headers
 
-**Files Changed**: 25 (22 modified + 3 new)
-**Code Lines**: 840 insertions, 26 deletions
-**Commit**: a132c15080df6b06921ea1081de35f50854b8040
-
-**Complete Details**: See SPRINT-6-COMPLETION-2026-02-12.md
+**Recommendations for Next Session**:
+1. Email notifications (Tier 1, blocks launch)
+2. Bulk fulfillment (Tier 1, improves admin workflow)
+3. Testing all email flows before production launch
 
 ---
 
@@ -490,6 +523,12 @@ All documentation is available in the project root and pushed to GitHub:
 - First delivery date display (7-day lead time) — ✅ 2026-02-09
 - Database schema extended for subscription fulfillment — ✅ 2026-02-09
 - Complete subscription lifecycle management
+- **Storefront SSR (zero flash of empty state)** — ✅ 2026-02-12
+- Shop page server-side data loading — ✅ 2026-02-12
+- Drops page server-side data loading — ✅ 2026-02-12
+- Product image upload system (multer + nginx) — ✅ 2026-02-12
+- Admin panel file upload capability — ✅ 2026-02-12
+- Cloudflare analytics CSP fix — ✅ 2026-02-12
 
 ### What Needs Before Go-Live 🔄
 
@@ -687,32 +726,49 @@ The Odd Fellow Coffee e-commerce platform is a complete, feature-rich web applic
 
 ## For Next Session
 
-**Current Status** (as of 2026-02-12):
+**Current Status** (as of 2026-02-12 Afternoon):
 - Payment flow: OPERATIONAL (TEST mode)
-- Stripe webhook: FULLY OPERATIONAL (all event types)
-- Product variants: IMPLEMENTED (with proration)
+- Stripe webhook: WORKING
+- Product variants: IMPLEMENTED
 - Subscription discount: LIVE (10% off, fee-aware pricing)
 - Mobile UX: ENHANCED
 - Domain: CONFIGURED (oddfellowcoffee.com)
 - All features: LIVE & TESTED
-- Product images: DEPLOYED ✅
-- Inventory management: LIVE ✅ (NEW 2026-02-12)
-- Bulk fulfillment: LIVE ✅ (NEW 2026-02-12)
-- Delivery calendar: LIVE ✅ (NEW 2026-02-12)
-- Subscription controls: LIVE ✅ (NEW 2026-02-12)
-- Cancellation tracking: LIVE ✅ (NEW 2026-02-12)
-- Order notifications: LIVE ✅ (NEW 2026-02-12)
+- Product images: DEPLOYED ✅ (2026-02-09)
+- Image upload system: DEPLOYED ✅ (2026-02-12 morning)
+- Multer file handling: LIVE with nginx static serving
+- Business process analysis: COMPLETE ✅ (2026-02-12 morning)
+- **Storefront FOES eliminated**: DEPLOYED ✅ (2026-02-12 afternoon)
+- **Shop page SSR**: LIVE (commit 2609ed9)
+- **Drops page SSR**: LIVE (commit 2609ed9)
+- **CSP fixed for Cloudflare**: DEPLOYED ✅
 
 **Immediate Priorities** (Updated 2026-02-12):
-1. **Live Stripe keys** — Generate and configure (BLOCKING for launch)
-   - Effort: 30-45 minutes
-   - Impact: Enable real payment processing
-2. **SSL certificate** — Obtain and install HTTPS (already on domain)
-   - Effort: 1-2 hours
-   - Impact: Enable secure payments, remove browser warnings
-3. **Email service** — Activate SMTP for confirmations
-   - Effort: 30-45 minutes
-   - Impact: Automated fulfillment emails operational
+1. **Email Notifications** — EMAIL DELIVERY SYSTEM (TIER 1 BLOCKER)
+   - Order confirmation email
+   - Fulfillment notification email
+   - Subscription renewal email
+   - SMTP configured, templates ready (HOSTING-MAP.md)
+   - Effort: 4-5 hours
+   - Must complete before production launch
+   - Detailed in SESSION-2026-02-12-IMAGE-UPLOAD-FEATURE.md
+
+2. **Bulk Order Fulfillment** — ADMIN WORKFLOW OPTIMIZATION (TIER 1)
+   - Checkbox interface for multi-select
+   - "Mark Selected as Fulfilled" bulk action
+   - Bulk email notification
+   - Effort: 2 hours
+   - Dependencies: Email notifications (above)
+   - Detailed in SESSION-2026-02-12-IMAGE-UPLOAD-FEATURE.md
+
+3. **Live Stripe keys** — Generate and configure (BLOCKING for launch)
+   - sk_live_* and pk_live_* keys from Stripe dashboard
+   - Update .env on VPS
+   - Webhook URL configuration
+
+4. **SSL certificate** — Obtain and install HTTPS (already on domain)
+   - Let's Encrypt via Cloudflare
+   - Verify browser security
 
 **Key Information**:
 - Live site: https://oddfellowcoffee.com (test mode active)

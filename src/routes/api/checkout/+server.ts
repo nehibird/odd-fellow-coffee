@@ -5,12 +5,11 @@ import { SITE_URL } from '$env/static/private';
 import { isValidEmail } from '$lib/server/validation';
 
 export async function POST({ request }) {
-	const { items, email, name, reservationData, dropId, zip } = await request.json();
+	const { items, email, name, reservationData, dropId } = await request.json();
 
 	if (!items?.length) {
 		throw error(400, 'Items required');
 	}
-	// Email is optional - Stripe will collect it during checkout
 	if (email && !isValidEmail(email)) {
 		throw error(400, 'Invalid email format');
 	}
@@ -62,13 +61,13 @@ export async function POST({ request }) {
 			db.prepare("UPDATE drops SET status = 'sold_out' WHERE id = ?").run(dropId);
 		}
 
-		const session = await createCheckoutSession(
+		// Drops use pickup — no shipping needed, still uses embedded checkout
+		const { clientSecret, sessionId } = await createCheckoutSession(
 			lineItems, email,
-			`${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`,
-			`${SITE_URL}/checkout/cancel`
+			`${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`
 		);
-		db.prepare('UPDATE orders SET stripe_session_id = ? WHERE id = ?').run(session.id, orderId);
-		return json({ url: session.url, orderId });
+		db.prepare('UPDATE orders SET stripe_session_id = ? WHERE id = ?').run(sessionId, orderId);
+		return json({ clientSecret, orderId });
 	}
 
 	// Regular (non-drop) checkout
@@ -79,10 +78,8 @@ export async function POST({ request }) {
 			throw error(409, `${product.name} is out of stock`);
 		}
 
-		// Use cart price if provided (for variant pricing), otherwise use product base price
 		let priceCents = product.price_cents;
 		if (item.price_cents && product.variants) {
-			// Validate the price matches a valid variant price
 			try {
 				const variants = JSON.parse(product.variants);
 				if (variants.sizes && Array.isArray(variants.sizes)) {
@@ -117,15 +114,14 @@ export async function POST({ request }) {
 		).run(orderId, reservationData.date, reservationData.timeSlot, JSON.stringify(items), name || '', email);
 	}
 
+	// Collect shipping for non-reservation orders; shipping rate determined dynamically
 	const collectShipping = !reservationData;
-	const isLocalDelivery = zip === '74653';
-	const session = await createCheckoutSession(
+	const { clientSecret, sessionId } = await createCheckoutSession(
 		lineItems, email,
 		`${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`,
-		`${SITE_URL}/checkout/cancel`,
-		{ collectShipping, localOnly: isLocalDelivery }
+		{ collectShipping }
 	);
-	db.prepare('UPDATE orders SET stripe_session_id = ? WHERE id = ?').run(session.id, orderId);
+	db.prepare('UPDATE orders SET stripe_session_id = ? WHERE id = ?').run(sessionId, orderId);
 
-	return json({ url: session.url, orderId });
+	return json({ clientSecret, orderId });
 }
