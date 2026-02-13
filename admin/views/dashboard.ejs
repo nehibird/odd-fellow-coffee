@@ -57,16 +57,6 @@
     </a>
   </div>
   <div class="col-sm-6 col-lg-3">
-    <a href="<%= base %>/reservations" class="text-decoration-none">
-      <div class="card h-100">
-        <div class="card-body">
-          <h6 class="card-subtitle text-muted mb-2">Upcoming Reservations</h6>
-          <h2 class="mb-0"><%= counts.upcomingReservations %></h2>
-        </div>
-      </div>
-    </a>
-  </div>
-  <div class="col-sm-6 col-lg-3">
     <a href="<%= base %>/drops" class="text-decoration-none">
       <div class="card h-100">
         <div class="card-body">
@@ -76,7 +66,7 @@
       </div>
     </a>
   </div>
-  <% if (counts.subscriptionsToday + counts.reservationsToday + counts.dropsToday > 0) { %>
+  <% if (counts.subscriptionsToday + counts.dropsToday > 0) { %>
   <div class="col-sm-6 col-lg-3">
     <a href="<%= base %>/calendar/day/<%= today %>" class="text-decoration-none">
       <div class="card border-info h-100">
@@ -84,7 +74,6 @@
           <h6 class="card-subtitle text-muted mb-2">Today's Prep</h6>
           <div>
             <% if (counts.subscriptionsToday) { %><span class="badge bg-success"><%= counts.subscriptionsToday %> deliveries</span> <% } %>
-            <% if (counts.reservationsToday) { %><span class="badge" style="background:#6f42c1;"><%= counts.reservationsToday %> reservations</span> <% } %>
             <% if (counts.dropsToday) { %><span class="badge bg-warning"><%= counts.dropsToday %> drops</span> <% } %>
           </div>
         </div>
