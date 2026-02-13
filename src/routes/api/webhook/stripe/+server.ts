@@ -116,10 +116,16 @@ export async function POST({ request }) {
 				} else {
 					db.prepare('UPDATE orders SET status = ?, customer_email = ?, customer_name = ? WHERE id = ?').run('confirmed', customerEmail, customerName, order.id);
 				}
-				// Decrement stock for tracked products
+				// Decrement stock for tracked products + build enriched items for email
+				let enrichedItems: { productId: number; name: string; quantity: number; price_cents: number; variant?: string }[] = [];
 				try {
-					const orderItems = JSON.parse(order.items) as { productId: number; quantity: number }[];
+					const orderItems = JSON.parse(order.items) as { productId: number; quantity: number; price_cents: number; variant?: string }[];
 					for (const item of orderItems) {
+						const product = item.productId ? db.prepare('SELECT name FROM products WHERE id = ?').get(item.productId) as any : null;
+						enrichedItems.push({
+							...item,
+							name: product?.name || `Item #${item.productId}`
+						});
 						if (item.productId) {
 							db.prepare(
 								'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity IS NOT NULL'
@@ -130,7 +136,21 @@ export async function POST({ request }) {
 					console.error('Stock decrement failed:', e);
 				}
 				try {
-					await sendOrderConfirmation(customerEmail, customerName, order.id, order.total_cents);
+					const shippingAddr = shipping?.address ? {
+						line1: shipping.address.line1,
+						line2: shipping.address.line2 || '',
+						city: shipping.address.city,
+						state: shipping.address.state,
+						postal_code: shipping.address.postal_code
+					} : undefined;
+					await sendOrderConfirmation(customerEmail, customerName, {
+						id: order.id,
+						items: enrichedItems,
+						totalCents: order.total_cents,
+						shippingMethod: (shippingCost?.shipping_rate as any)?.display_name,
+						shippingCents: shippingCost?.amount_total || 0,
+						shippingAddress: shippingAddr
+					});
 				} catch (e) {
 					console.error('Email send failed:', e);
 				}
