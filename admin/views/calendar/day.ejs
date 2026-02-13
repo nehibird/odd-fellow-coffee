@@ -1,0 +1,137 @@
+<%- include('../header') %>
+
+<div class="mb-3">
+  <a href="<%= base %>/calendar?month=<%= date.substring(0, 7) %>" class="text-decoration-none">
+    <i class="bi bi-arrow-left me-1"></i> Back to Calendar
+  </a>
+</div>
+
+<h2 class="mb-4"><%= dateLabel %></h2>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="text-primary"><%= orders.length %></h5>
+        <small class="text-muted">Orders</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="text-success"><%= subscriptions.length %></h5>
+        <small class="text-muted">Deliveries</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 style="color: #6f42c1;"><%= reservations.length %></h5>
+        <small class="text-muted">Reservations</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="card text-center">
+      <div class="card-body">
+        <h5 class="text-warning"><%= drops.length %></h5>
+        <small class="text-muted">Drops</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if (subscriptions.length > 0) { %>
+<h4>Subscription Deliveries</h4>
+<div class="table-responsive mb-4">
+  <table class="table table-sm">
+    <thead class="table-light">
+      <tr><th>Product</th><th>Customer</th><th>Variant</th><th>Address</th></tr>
+    </thead>
+    <tbody>
+      <% subscriptions.forEach(sub => { %>
+        <% const addr = sub.shipping_address ? JSON.parse(sub.shipping_address) : null; %>
+        <tr>
+          <td><%= sub.product_name || 'Unknown' %></td>
+          <td><%= sub.customer_email %></td>
+          <td><%= sub.variant || '-' %></td>
+          <td>
+            <% if (addr) { %>
+              <%= sub.shipping_name || '' %> - <%= addr.line1 || '' %><%= addr.city ? ', ' + addr.city : '' %><%= addr.state ? ', ' + addr.state : '' %> <%= addr.postal_code || '' %>
+            <% } else { %>
+              -
+            <% } %>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<% if (reservations.length > 0) { %>
+<h4>Reservations</h4>
+<div class="table-responsive mb-4">
+  <table class="table table-sm">
+    <thead class="table-light">
+      <tr><th>Time</th><th>Customer</th><th>Email</th></tr>
+    </thead>
+    <tbody>
+      <% reservations.forEach(r => { %>
+        <tr>
+          <td><%= r.time_slot %></td>
+          <td><%= r.customer_name || 'N/A' %></td>
+          <td><%= r.customer_email || 'N/A' %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<% if (drops.length > 0) { %>
+<h4>Drops</h4>
+<div class="table-responsive mb-4">
+  <table class="table table-sm">
+    <thead class="table-light">
+      <tr><th>Title</th><th>Opens</th><th>Closes</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <% drops.forEach(d => { %>
+        <tr>
+          <td><%= d.title %></td>
+          <td><%= d.opens_at %></td>
+          <td><%= d.closes_at || '-' %></td>
+          <td><%- helpers.statusBadge(d.status) %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<% if (orders.length > 0) { %>
+<h4>Orders</h4>
+<div class="table-responsive mb-4">
+  <table class="table table-sm">
+    <thead class="table-light">
+      <tr><th>#</th><th>Customer</th><th>Total</th><th>Status</th><th>Stage</th></tr>
+    </thead>
+    <tbody>
+      <% orders.forEach(order => { %>
+        <tr>
+          <td><%= order.id %></td>
+          <td><%= order.customer_name || order.customer_email || 'N/A' %></td>
+          <td><%= helpers.formatCents(order.total_cents) %></td>
+          <td><%- helpers.statusBadge(order.status) %></td>
+          <td><%- order.stage ? helpers.statusBadge(order.stage) : '-' %></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+<% } %>
+
+<%- include('../footer') %>

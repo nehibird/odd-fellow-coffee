@@ -121,7 +121,9 @@ function initAdminTables() {
     'ALTER TABLE subscriptions ADD COLUMN shipping_name TEXT',
     'ALTER TABLE subscriptions ADD COLUMN shipping_address TEXT',
     'ALTER TABLE subscriptions ADD COLUMN next_delivery_date TEXT',
-    'ALTER TABLE subscriptions ADD COLUMN last_fulfilled_at TEXT'
+    'ALTER TABLE subscriptions ADD COLUMN last_fulfilled_at TEXT',
+    'ALTER TABLE products ADD COLUMN stock_quantity INTEGER DEFAULT NULL',
+    'ALTER TABLE subscriptions ADD COLUMN cancel_reason TEXT'
   ];
   for (const stmt of alters) {
     try { db.exec(stmt); } catch { /* column already exists */ }

@@ -31,7 +31,7 @@ export const helpers = {
     if (!status) return '';
     const colors = {
       pending: 'warning', confirmed: 'primary', fulfilled: 'success',
-      active: 'success', canceled: 'danger', past_due: 'warning',
+      active: 'success', canceled: 'danger', past_due: 'warning', paused: 'secondary',
       scheduled: 'info', live: 'success', sold_out: 'danger', closed: 'secondary',
       ordered: 'primary', baking: 'warning', ready: 'success',
       picked_up: 'secondary', shipped: 'info', delivered: 'secondary'

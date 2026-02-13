@@ -58,6 +58,14 @@
         <input type="hidden" name="image" value="<%= product ? product.image || '' : '' %>">
       </div>
 
+      <div class="mb-3">
+        <label class="form-label" for="stock_quantity">Stock Quantity</label>
+        <input type="number" name="stock_quantity" id="stock_quantity" class="form-control" min="0"
+               value="<%= product && product.stock_quantity != null ? product.stock_quantity : '' %>"
+               placeholder="Leave empty for unlimited">
+        <div class="form-text">Leave empty for items with unlimited/untracked stock (e.g. baked-to-order).</div>
+      </div>
+
       <div class="mb-3 form-check">
         <input type="checkbox" name="subscribable" id="subscribable" class="form-check-input" value="1"
                <%= product && product.subscribable ? 'checked' : '' %>>

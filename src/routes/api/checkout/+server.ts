@@ -75,6 +75,9 @@ export async function POST({ request }) {
 	const lineItems = items.map((item: { productId: number; quantity: number; variant?: string; price_cents?: number }) => {
 		const product = db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(item.productId) as any;
 		if (!product) throw error(400, `Product ${item.productId} not found`);
+		if (product.stock_quantity !== null && product.stock_quantity < item.quantity) {
+			throw error(409, `${product.name} is out of stock`);
+		}
 
 		// Use cart price if provided (for variant pricing), otherwise use product base price
 		let priceCents = product.price_cents;

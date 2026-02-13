@@ -27,7 +27,7 @@ router.get('/:id/edit', (req, res) => {
 });
 
 router.post('/', upload.single('imageFile'), (req, res) => {
-  const { name, category, description, price, variants, image, subscribable } = req.body;
+  const { name, category, description, price, variants, image, subscribable, stock_quantity } = req.body;
 
   if (!name || !name.trim()) {
     res.flash('error', 'Name is required.');
@@ -52,18 +52,19 @@ router.post('/', upload.single('imageFile'), (req, res) => {
 
   // Use uploaded file if present, otherwise fall back to text field
   const imageValue = req.file ? req.file.filename : (image?.trim() || null);
+  const stockVal = stock_quantity !== undefined && stock_quantity !== '' ? parseInt(stock_quantity, 10) : null;
 
   const db = getDb();
   db.prepare(
-    'INSERT INTO products (name, category, description, price_cents, variants, subscribable, image) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).run(name.trim(), category, (description || '').trim(), priceCents, variants?.trim() || null, subscribable ? 1 : 0, imageValue);
+    'INSERT INTO products (name, category, description, price_cents, variants, subscribable, image, stock_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(name.trim(), category, (description || '').trim(), priceCents, variants?.trim() || null, subscribable ? 1 : 0, imageValue, stockVal);
 
   res.flash('success', `Product "${name.trim()}" created.`);
   res.redirect(BASE + '/products');
 });
 
 router.post('/:id', upload.single('imageFile'), (req, res) => {
-  const { name, category, description, price, variants, image, subscribable } = req.body;
+  const { name, category, description, price, variants, image, subscribable, stock_quantity } = req.body;
 
   if (!name || !name.trim()) {
     res.flash('error', 'Name is required.');
@@ -88,11 +89,12 @@ router.post('/:id', upload.single('imageFile'), (req, res) => {
 
   // Use uploaded file if present, otherwise keep existing text value
   const imageValue = req.file ? req.file.filename : (image?.trim() || null);
+  const stockVal = stock_quantity !== undefined && stock_quantity !== '' ? parseInt(stock_quantity, 10) : null;
 
   const db = getDb();
   db.prepare(
-    'UPDATE products SET name=?, category=?, description=?, price_cents=?, variants=?, subscribable=?, image=? WHERE id=?'
-  ).run(name.trim(), category, (description || '').trim(), priceCents, variants?.trim() || null, subscribable ? 1 : 0, imageValue, req.params.id);
+    'UPDATE products SET name=?, category=?, description=?, price_cents=?, variants=?, subscribable=?, image=?, stock_quantity=? WHERE id=?'
+  ).run(name.trim(), category, (description || '').trim(), priceCents, variants?.trim() || null, subscribable ? 1 : 0, imageValue, stockVal, req.params.id);
 
   res.flash('success', `Product "${name.trim()}" updated.`);
   res.redirect(BASE + '/products');

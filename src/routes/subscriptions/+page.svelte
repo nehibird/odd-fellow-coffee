@@ -30,20 +30,51 @@
 		}
 	}
 
-	async function cancel(sub: any) {
-		if (!confirm(`Cancel your ${sub.frequency} ${sub.product_name} subscription?`)) return;
+	async function pauseOrResume(sub: any, action: 'pause' | 'resume') {
+		const label = action === 'pause' ? 'Pause' : 'Resume';
+		if (!confirm(`${label} your ${sub.frequency} ${sub.product_name} subscription?`)) return;
+		const res = await fetch('/api/subscriptions', {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ subscriptionId: sub.id, email, token, action })
+		});
+		if (res.ok) {
+			subs = subs.map((s) =>
+				s.id === sub.id ? { ...s, status: action === 'pause' ? 'paused' : 'active' } : s
+			);
+		}
+	}
+
+	let cancelTarget: any = null;
+	let cancelReason = '';
+	const cancelReasons = [
+		'Too expensive',
+		"Don't need as much coffee",
+		'Switching brands',
+		'Other'
+	];
+
+	function startCancel(sub: any) {
+		cancelTarget = sub;
+		cancelReason = '';
+	}
+
+	async function confirmCancel() {
+		if (!cancelTarget) return;
 		const res = await fetch('/api/subscriptions', {
 			method: 'DELETE',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ subscriptionId: sub.id, email, token })
+			body: JSON.stringify({ subscriptionId: cancelTarget.id, email, token, reason: cancelReason })
 		});
 		if (res.ok) {
-			subs = subs.map((s) => (s.id === sub.id ? { ...s, cancel_at_period_end: 1 } : s));
+			subs = subs.map((s) => (s.id === cancelTarget.id ? { ...s, cancel_at_period_end: 1 } : s));
 		}
+		cancelTarget = null;
 	}
 
 	const statusColors: Record<string, string> = {
 		active: 'bg-green-100 text-green-800',
+		paused: 'bg-gray-100 text-gray-800',
 		past_due: 'bg-yellow-100 text-yellow-800',
 		canceled: 'bg-red-100 text-red-800'
 	};
@@ -91,7 +122,10 @@
 						<div class="flex items-center gap-3">
 							<span class="rounded-full px-3 py-1 text-xs font-medium {statusColors[sub.status] || 'bg-gray-100'}">{sub.status}</span>
 							{#if sub.status === 'active' && !sub.cancel_at_period_end}
-								<button class="text-xs text-red-500 hover:underline" on:click={() => cancel(sub)}>Cancel</button>
+								<button class="text-xs text-yellow-600 hover:underline" on:click={() => pauseOrResume(sub, 'pause')}>Pause</button>
+								<button class="text-xs text-red-500 hover:underline" on:click={() => startCancel(sub)}>Cancel</button>
+							{:else if sub.status === 'paused'}
+								<button class="text-xs text-green-600 hover:underline" on:click={() => pauseOrResume(sub, 'resume')}>Resume</button>
 							{:else if sub.cancel_at_period_end}
 								<span class="text-xs text-gray-400">Canceling</span>
 							{/if}
@@ -100,5 +134,32 @@
 				{/each}
 			</div>
 		{/if}
+	{/if}
+
+	{#if cancelTarget}
+		<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+			<div class="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+				<h3 class="text-lg font-semibold">Cancel Subscription</h3>
+				<p class="mt-1 text-sm text-gray-500">We're sorry to see you go! Mind telling us why?</p>
+				<select bind:value={cancelReason} class="mt-3 w-full rounded border px-3 py-2">
+					<option value="">Select a reason...</option>
+					{#each cancelReasons as reason}
+						<option value={reason}>{reason}</option>
+					{/each}
+				</select>
+				<div class="mt-4 flex gap-2">
+					<button class="flex-1 rounded-full border py-2 hover:bg-gray-50" on:click={() => (cancelTarget = null)}>
+						Keep Subscription
+					</button>
+					<button
+						class="flex-1 rounded-full bg-red-500 py-2 text-white hover:bg-red-600 disabled:opacity-50"
+						disabled={!cancelReason}
+						on:click={confirmCancel}
+					>
+						Confirm Cancel
+					</button>
+				</div>
+			</div>
+		</div>
 	{/if}
 </section>
