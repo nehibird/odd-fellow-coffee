@@ -30,11 +30,9 @@ export const helpers = {
   statusBadge(status) {
     if (!status) return '';
     const colors = {
-      pending: 'warning', confirmed: 'primary', fulfilled: 'success',
+      pending: 'warning', confirmed: 'primary', shipped: 'info', delivered: 'success',
       active: 'success', canceled: 'danger', past_due: 'warning', paused: 'secondary',
-      scheduled: 'info', live: 'success', sold_out: 'danger', closed: 'secondary',
-      ordered: 'primary', baking: 'warning', ready: 'success',
-      picked_up: 'secondary', shipped: 'info', delivered: 'secondary'
+      scheduled: 'info', live: 'success', sold_out: 'danger', closed: 'secondary'
     };
     const color = colors[status] || 'secondary';
     return `<span class="badge bg-${color}">${status.replace(/_/g, ' ')}</span>`;

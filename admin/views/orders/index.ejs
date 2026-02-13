@@ -18,7 +18,10 @@
     <a class="nav-link <%= filter === 'confirmed' ? 'active' : '' %>" href="<%= base %>/orders?status=confirmed">Confirmed</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link <%= filter === 'fulfilled' ? 'active' : '' %>" href="<%= base %>/orders?status=fulfilled">Fulfilled</a>
+    <a class="nav-link <%= filter === 'shipped' ? 'active' : '' %>" href="<%= base %>/orders?status=shipped">Shipped</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link <%= filter === 'delivered' ? 'active' : '' %>" href="<%= base %>/orders?status=delivered">Delivered</a>
   </li>
 </ul>
 
@@ -31,7 +34,6 @@
       <input type="hidden" name="status" id="bulk-status-val">
       <div id="bulk-ids"></div>
       <button type="button" class="btn btn-sm btn-primary" onclick="submitBulk('confirmed')">Bulk Confirm</button>
-      <button type="button" class="btn btn-sm btn-success" onclick="submitBulk('fulfilled')">Bulk Fulfill</button>
     </form>
   </div>
   <div class="table-responsive">
@@ -44,7 +46,6 @@
           <th>Items</th>
           <th>Total</th>
           <th>Status</th>
-          <th>Stage</th>
           <th>Date</th>
           <th>Actions</th>
         </tr>
@@ -69,6 +70,11 @@
                   </small>
                 </div>
               <% } %>
+              <% if (order.tracking_number) { %>
+                <div class="mt-1">
+                  <small class="text-muted"><i class="bi bi-truck"></i> <%= order.tracking_number %></small>
+                </div>
+              <% } %>
             </td>
             <td>
               <% items.forEach(item => { %>
@@ -82,13 +88,6 @@
               <% } %>
             </td>
             <td><%- helpers.statusBadge(order.status) %></td>
-            <td>
-              <% if (order.stage) { %>
-                <%- helpers.statusBadge(order.stage) %>
-              <% } else { %>
-                <span class="text-muted">-</span>
-              <% } %>
-            </td>
             <td><small><%= helpers.formatDate(order.created_at) %></small></td>
             <td class="text-nowrap">
               <% if (addr) { %>
@@ -102,40 +101,26 @@
                   <button class="btn btn-sm btn-outline-primary">Confirm</button>
                 </form>
               <% } %>
-              <% if (order.status === 'confirmed') { %>
-                <form method="POST" action="<%= base %>/orders/<%= order.id %>/status" class="d-inline">
-                  <input type="hidden" name="status" value="fulfilled">
-                  <button class="btn btn-sm btn-outline-success">Fulfill</button>
+              <% if (order.status === 'confirmed' && order.shipping_method && !order.shipping_method.includes('Local')) { %>
+                <button class="btn btn-sm btn-outline-info mb-1" onclick="shipOrder(this, <%= order.id %>)">
+                  <i class="bi bi-truck"></i> Mark Shipped
+                </button>
+                <form method="POST" action="<%= base %>/orders/<%= order.id %>/status" id="ship-form-<%= order.id %>" style="display:none;">
+                  <input type="hidden" name="status" value="shipped">
+                  <input type="hidden" name="tracking_number" id="tracking-<%= order.id %>">
                 </form>
               <% } %>
-              <%
-                const pickupFlow = ['ordered', 'baking', 'ready', 'picked_up'];
-                const shipFlow = ['confirmed', 'shipped', 'delivered'];
-                const flow = order.shipping_method ? shipFlow : pickupFlow;
-              %>
-              <% if (!order.stage && order.status === 'confirmed') { %>
-                <% if (order.shipping_method) { %>
-                  <form method="POST" action="<%= base %>/orders/<%= order.id %>/stage" class="d-inline">
-                    <input type="hidden" name="stage" value="shipped">
-                    <button class="btn btn-sm btn-outline-info"><i class="bi bi-truck"></i> Mark Shipped</button>
-                  </form>
-                <% } else { %>
-                  <form method="POST" action="<%= base %>/orders/<%= order.id %>/stage" class="d-inline">
-                    <input type="hidden" name="stage" value="ordered">
-                    <button class="btn btn-sm btn-outline-info">Start Prep</button>
-                  </form>
-                <% } %>
-              <% } else if (order.stage) { %>
-                <%
-                  const idx = flow.indexOf(order.stage);
-                  const nextStage = (idx >= 0 && idx < flow.length - 1) ? flow[idx + 1] : null;
-                %>
-                <% if (nextStage) { %>
-                  <form method="POST" action="<%= base %>/orders/<%= order.id %>/stage" class="d-inline">
-                    <input type="hidden" name="stage" value="<%= nextStage %>">
-                    <button class="btn btn-sm btn-outline-info"><%= nextStage.replace(/_/g, ' ') %> &rarr;</button>
-                  </form>
-                <% } %>
+              <% if (order.status === 'confirmed' && (!order.shipping_method || order.shipping_method.includes('Local'))) { %>
+                <form method="POST" action="<%= base %>/orders/<%= order.id %>/status" class="d-inline">
+                  <input type="hidden" name="status" value="delivered">
+                  <button class="btn btn-sm btn-outline-success"><i class="bi bi-check-circle"></i> Mark Delivered</button>
+                </form>
+              <% } %>
+              <% if (order.status === 'shipped') { %>
+                <form method="POST" action="<%= base %>/orders/<%= order.id %>/status" class="d-inline">
+                  <input type="hidden" name="status" value="delivered">
+                  <button class="btn btn-sm btn-outline-success"><i class="bi bi-check-circle"></i> Mark Delivered</button>
+                </form>
               <% } %>
             </td>
           </tr>
