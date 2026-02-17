@@ -39,8 +39,11 @@
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" on:click|self={() => dispatch('close')}>
 	<div class="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
 		<h3 class="text-lg font-semibold">Choose Delivery Date</h3>
+		<p class="mt-1 text-sm font-semibold text-medium-carmine">
+			Local delivery &amp; pickup only — Tonkawa area (74653)
+		</p>
 		<p class="mt-1 text-sm text-gray-500">
-			Bread is baked fresh and available for delivery or pickup on Mondays and Fridays.
+			Bread is baked fresh and available for local delivery or pickup on Mondays and Fridays.
 			Orders require at least {leadDays} days advance notice.
 		</p>
 
