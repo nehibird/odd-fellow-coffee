@@ -71,12 +71,14 @@ export async function POST({ request }) {
 	}
 
 	// Regular (non-drop) checkout
+	let hasBakery = false;
 	const lineItems = items.map((item: { productId: number; quantity: number; variant?: string; price_cents?: number }) => {
 		const product = db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(item.productId) as any;
 		if (!product) throw error(400, `Product ${item.productId} not found`);
 		if (product.stock_quantity !== null && product.stock_quantity < item.quantity) {
 			throw error(409, `${product.name} is out of stock`);
 		}
+		if (product.category === 'bakery') hasBakery = true;
 
 		let priceCents = product.price_cents;
 		if (item.price_cents && product.variants) {
@@ -119,7 +121,7 @@ export async function POST({ request }) {
 	const { clientSecret, sessionId } = await createCheckoutSession(
 		lineItems, email,
 		`${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`,
-		{ collectShipping }
+		{ collectShipping, localOnly: hasBakery }
 	);
 	db.prepare('UPDATE orders SET stripe_session_id = ? WHERE id = ?').run(sessionId, orderId);
 

@@ -20,7 +20,7 @@ export async function createCheckoutSession(
 	items: LineItem[],
 	customerEmail: string | undefined,
 	returnUrl: string,
-	opts?: { collectShipping?: boolean }
+	opts?: { collectShipping?: boolean; localOnly?: boolean }
 ) {
 	const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item) => ({
 		price_data: {
@@ -36,7 +36,10 @@ export async function createCheckoutSession(
 		line_items: lineItems,
 		mode: 'payment',
 		ui_mode: 'embedded',
-		return_url: returnUrl
+		return_url: returnUrl,
+		metadata: {
+			...(opts?.localOnly ? { local_only: '1' } : {})
+		}
 	};
 
 	if (customerEmail) {
@@ -63,6 +66,7 @@ export async function createCheckoutSession(
 }
 
 const FREQUENCY_MAP: Record<string, { interval: 'week' | 'month'; interval_count: number }> = {
+	twice_weekly: { interval: 'week', interval_count: 1 },
 	weekly: { interval: 'week', interval_count: 1 },
 	biweekly: { interval: 'week', interval_count: 2 },
 	monthly: { interval: 'month', interval_count: 1 }
@@ -77,10 +81,21 @@ export function getShippingOptions(zip: string): Stripe.Checkout.SessionCreatePa
 				shipping_rate_data: {
 					type: 'fixed_amount',
 					fixed_amount: { amount: 0, currency: 'usd' },
-					display_name: 'Free Local Delivery (Tonkawa area)',
+					display_name: 'Free Local Delivery (Mon & Fri, 5:30 PM)',
 					delivery_estimate: {
 						minimum: { unit: 'business_day', value: 1 },
 						maximum: { unit: 'business_day', value: 2 }
+					}
+				}
+			},
+			{
+				shipping_rate_data: {
+					type: 'fixed_amount',
+					fixed_amount: { amount: 0, currency: 'usd' },
+					display_name: 'Free Local Pickup (Mon & Fri, 4:00 PM)',
+					delivery_estimate: {
+						minimum: { unit: 'business_day', value: 0 },
+						maximum: { unit: 'business_day', value: 0 }
 					}
 				}
 			}
@@ -121,7 +136,11 @@ export async function createSubscriptionCheckout(
 	const recurring = FREQUENCY_MAP[frequency];
 	if (!recurring) throw new Error(`Invalid frequency: ${frequency}`);
 
-	const frequencyLabel = frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Every 2 Weeks' : 'Monthly';
+	const frequencyLabel = frequency === 'twice_weekly' ? 'Twice Weekly (Mon & Fri)'
+		: frequency === 'weekly' ? 'Weekly'
+		: frequency === 'biweekly' ? 'Every 2 Weeks'
+		: 'Monthly';
+	const subQuantity = frequency === 'twice_weekly' ? 2 : 1;
 
 	const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
 		{
@@ -131,7 +150,7 @@ export async function createSubscriptionCheckout(
 				unit_amount: priceCents,
 				recurring
 			},
-			quantity: 1
+			quantity: subQuantity
 		}
 	];
 

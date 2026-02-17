@@ -2,6 +2,7 @@
 	import { cart } from './CartStore';
 	import { onMount } from 'svelte';
 	import ShippingModal from './ShippingModal.svelte';
+	import BreadDateModal from './BreadDateModal.svelte';
 
 	export let product: {
 		id: number;
@@ -12,7 +13,10 @@
 		variants: string | null;
 		subscribable?: number;
 		image: string | null;
+		stock_quantity?: number | null;
 	};
+
+	$: soldOut = product.stock_quantity !== null && product.stock_quantity !== undefined && product.stock_quantity <= 0;
 
 	let selectedSize = '';
 	let selectedGrind = '';
@@ -61,18 +65,38 @@
 	$: subPrice = Math.round(currentPrice * (1 - SUB_DISCOUNT));
 
 	let addedToCart = false;
+	let showBreadDateModal = false;
+
+	$: isBakery = product.category === 'bakery';
 
 	function addToCart() {
+		if (soldOut) return;
+		if (isBakery) {
+			showBreadDateModal = true;
+			return;
+		}
+		doAddToCart();
+	}
+
+	function doAddToCart(deliveryDate?: string) {
+		if (soldOut) return;
 		cart.add({
 			productId: product.id,
 			name: product.name,
 			price_cents: currentPrice,
 			quantity: 1,
 			variant: variantString,
-			image: product.image || undefined
+			image: product.image || undefined,
+			category: product.category,
+			deliveryDate
 		});
 		addedToCart = true;
 		setTimeout(() => { addedToCart = false; }, 2000);
+	}
+
+	function handleDateSelect(e: CustomEvent<string>) {
+		showBreadDateModal = false;
+		doAddToCart(e.detail);
 	}
 
 	// Subscribe state
@@ -146,14 +170,20 @@
 		</div>
 	{/if}
 
-	<button
-		on:click={addToCart}
-		class="mt-3 w-full rounded-full py-2 text-sm font-medium transition-colors {addedToCart ? 'bg-green-600 text-white' : 'bg-black text-white hover:bg-medium-carmine'}"
-	>
-		{addedToCart ? '\u2713 Added!' : 'Add to Cart'}
-	</button>
+	{#if soldOut}
+		<div class="mt-3 w-full rounded-full bg-gray-200 py-2 text-center text-sm font-medium text-gray-500">
+			Sold Out
+		</div>
+	{:else}
+		<button
+			on:click={addToCart}
+			class="mt-3 w-full rounded-full py-2 text-sm font-medium transition-colors {addedToCart ? 'bg-green-600 text-white' : 'bg-black text-white hover:bg-medium-carmine'}"
+		>
+			{addedToCart ? '\u2713 Added!' : 'Add to Cart'}
+		</button>
+	{/if}
 
-	{#if product.subscribable}
+	{#if product.subscribable && !soldOut}
 		{#if !showSubscribe}
 			<button
 				on:click={() => (showSubscribe = true)}
@@ -172,6 +202,9 @@
 					<p class="text-center text-xs text-gray-600">{variantString}</p>
 				{/if}
 				<select bind:value={subFrequency} class="w-full rounded border px-2 py-1 text-sm">
+					{#if isBakery}
+						<option value="twice_weekly">Twice Weekly (Mon & Fri) — ${(subPrice * 2 / 100).toFixed(2)}/week</option>
+					{/if}
 					<option value="weekly">Weekly — ${(subPrice / 100).toFixed(2)}/week</option>
 					<option value="biweekly">Every 2 Weeks — ${(subPrice / 100).toFixed(2)}/2 weeks</option>
 					<option value="monthly">Monthly — ${(subPrice / 100).toFixed(2)}/month</option>
@@ -202,5 +235,12 @@
 		priceCents={currentPrice}
 		{subPrice}
 		on:close={() => (showShippingModal = false)}
+	/>
+{/if}
+
+{#if showBreadDateModal}
+	<BreadDateModal
+		on:select={handleDateSelect}
+		on:close={() => (showBreadDateModal = false)}
 	/>
 {/if}

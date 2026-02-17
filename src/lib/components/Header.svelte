@@ -60,9 +60,6 @@
 			<li>
 				<a href="/shop" class="duration-300 ease-in-out hover:font-semibold">shop</a>
 			</li>
-			<li>
-				<a href="/drops" class="duration-300 ease-in-out hover:font-semibold">drops</a>
-			</li>
 			<li class="relative">
 				<a href="/cart" class="duration-300 ease-in-out hover:font-semibold">cart</a>
 				{#if cartCount > 0}
@@ -92,9 +89,6 @@
 				</li>
 				<li>
 					<a href="/shop" class="block hover:cursor-pointer" on:click={() => (isMenuOpen = false)}>shop</a>
-				</li>
-				<li>
-					<a href="/drops" class="block hover:cursor-pointer" on:click={() => (isMenuOpen = false)}>drops</a>
 				</li>
 				<li>
 					<a href="/cart" class="block hover:cursor-pointer" on:click={() => (isMenuOpen = false)}>

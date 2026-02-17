@@ -1,5 +1,5 @@
 import { json, error } from '@sveltejs/kit';
-import { stripe, getShippingOptions } from '$lib/server/stripe';
+import { stripe, getShippingOptions, LOCAL_ZIP } from '$lib/server/stripe';
 
 /**
  * Called by the Stripe Embedded Checkout onShippingDetailsChange callback.
@@ -18,6 +18,20 @@ export async function POST({ request }) {
 		return json({
 			type: 'reject',
 			message: 'Please enter a valid zip code'
+		});
+	}
+
+	// Check if this session has bakery items (local-only)
+	let localOnly = false;
+	try {
+		const session = await stripe.checkout.sessions.retrieve(checkout_session_id);
+		localOnly = session.metadata?.local_only === '1';
+	} catch { /* proceed without metadata check */ }
+
+	if (localOnly && zip !== LOCAL_ZIP) {
+		return json({
+			type: 'reject',
+			message: 'Bread orders are available for local delivery or pickup only (Tonkawa area, zip 74653). Please remove bakery items to ship to other addresses.'
 		});
 	}
 

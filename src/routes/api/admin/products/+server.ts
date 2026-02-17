@@ -74,9 +74,13 @@ export async function PUT({ request, cookies }) {
 	const body = await request.json();
 	const validated = validateProduct(body, true);
 	const db = getDb();
+	const stockQuantity = body.stock_quantity !== undefined ? (body.stock_quantity === null ? null : Number(body.stock_quantity)) : undefined;
 	db.prepare(
 		'UPDATE products SET name=?, category=?, description=?, price_cents=?, variants=?, subscribable=?, active=?, image=? WHERE id=?'
 	).run(validated.name, validated.category, validated.description, validated.price_cents, validated.variants, validated.subscribable, validated.active, validated.image, validated.id);
+	if (stockQuantity !== undefined) {
+		db.prepare('UPDATE products SET stock_quantity = ? WHERE id = ?').run(stockQuantity, validated.id);
+	}
 	return json({ ok: true });
 }
 

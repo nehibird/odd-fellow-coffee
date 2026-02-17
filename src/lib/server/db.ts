@@ -63,6 +63,38 @@ function initSchema() {
 			db.exec(SEED);
 		}
 	}
+
+	// Seed default site settings (INSERT OR IGNORE = safe to re-run)
+	db.exec(SETTINGS_SEED);
+
+	// Update bakery product descriptions with ordering info
+	db.prepare(`UPDATE products SET description = ? WHERE name = 'Sourdough Loaf' AND description = 'Fresh-baked artisan sourdough'`)
+		.run('Fresh-baked artisan sourdough, made to order. Local delivery (Mon & Fri, 5:30 PM) or pickup (Mon & Fri, 4:00 PM). Tonkawa area only. Order at least 2 days in advance.');
+	db.prepare(`UPDATE products SET description = ? WHERE name = 'Banana Bread' AND description = 'Homemade, moist and delicious'`)
+		.run('Homemade, moist and delicious. Local delivery (Mon & Fri, 5:30 PM) or pickup (Mon & Fri, 4:00 PM). Tonkawa area only. Order at least 2 days in advance.');
+	db.prepare(`UPDATE products SET description = ? WHERE name = 'Cinnamon Roll' AND description = 'Warm with cream cheese icing'`)
+		.run('Warm with cream cheese icing. Local delivery (Mon & Fri, 5:30 PM) or pickup (Mon & Fri, 4:00 PM). Tonkawa area only. Order at least 2 days in advance.');
+	db.prepare(`UPDATE products SET description = ? WHERE name = 'Blueberry Muffin' AND description = 'Loaded with fresh blueberries'`)
+		.run('Loaded with fresh blueberries. Local delivery (Mon & Fri, 5:30 PM) or pickup (Mon & Fri, 4:00 PM). Tonkawa area only. Order at least 2 days in advance.');
+}
+
+export function getSetting(key: string): string | null {
+	const db = getDb();
+	const row = db.prepare('SELECT value FROM site_settings WHERE key = ?').get(key) as { value: string } | undefined;
+	return row?.value ?? null;
+}
+
+export function setSetting(key: string, value: string): void {
+	const db = getDb();
+	db.prepare('INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)').run(key, value);
+}
+
+export function getAllSettings(): Record<string, string> {
+	const db = getDb();
+	const rows = db.prepare('SELECT key, value FROM site_settings').all() as { key: string; value: string }[];
+	const result: Record<string, string> = {};
+	for (const row of rows) result[row.key] = row.value;
+	return result;
 }
 
 const SCHEMA = `
@@ -143,6 +175,10 @@ CREATE TABLE IF NOT EXISTS drop_items (
   quantity_available INTEGER NOT NULL,
   quantity_sold INTEGER DEFAULT 0,
   price_cents_override INTEGER
+);
+CREATE TABLE IF NOT EXISTS site_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
 );`;
 
 const SEED = `
@@ -166,3 +202,12 @@ INSERT INTO time_slots (day_of_week, start_time, end_time, capacity) VALUES
 (4,'07:00','08:00',5),(4,'08:00','09:00',5),(4,'09:00','10:00',5),(4,'10:00','11:00',5),
 (5,'07:00','08:00',5),(5,'08:00','09:00',5),(5,'09:00','10:00',5),(5,'10:00','11:00',5),
 (6,'07:00','08:00',5),(6,'08:00','09:00',5),(6,'09:00','10:00',5),(6,'10:00','11:00',5);`;
+
+const SETTINGS_SEED = `
+INSERT OR IGNORE INTO site_settings (key, value) VALUES
+('owner_notification_email', 'deborahmeansreese@gmail.com'),
+('pickup_address', '123 Main St, Tonkawa, OK 74653'),
+('pickup_times', 'Monday 4:00 PM, Friday 4:00 PM'),
+('delivery_times', 'Monday 5:30 PM, Friday 5:30 PM'),
+('bread_lead_days', '2'),
+('bread_delivery_days', 'monday,friday');`;
