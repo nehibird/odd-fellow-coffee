@@ -104,7 +104,21 @@
 					<div class="flex items-center justify-between rounded-xl border p-4">
 						<div>
 							<p class="font-semibold">{sub.product_name || 'Subscription'}</p>
-							<p class="text-sm text-gray-500">{sub.frequency}</p>
+							{#if sub.variant}<p class="text-sm text-gray-500">{sub.variant}</p>{/if}
+							<p class="text-sm text-gray-500">
+								{sub.frequency}
+								{#if sub.price_cents}
+									 — ${(sub.price_cents / 100).toFixed(2)}
+								{/if}
+							</p>
+							{#if sub.shipping_address}
+								{@const addr = (() => { try { return JSON.parse(sub.shipping_address); } catch { return null; } })()}
+								{#if addr}
+									<p class="mt-1 text-xs text-gray-400">
+										{sub.shipping_name ? sub.shipping_name + ' — ' : ''}{addr.line1}, {addr.city}, {addr.state} {addr.postal_code}
+									</p>
+								{/if}
+							{/if}
 							{#if sub.current_period_end}
 								<p class="text-xs text-gray-400">
 									{sub.cancel_at_period_end ? 'Ends' : 'Renews'}: {new Date(sub.current_period_end).toLocaleDateString()}

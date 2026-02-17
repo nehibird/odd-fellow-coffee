@@ -2,7 +2,8 @@ import { error, json } from '@sveltejs/kit';
 import { stripe } from '$lib/server/stripe';
 import { STRIPE_WEBHOOK_SECRET } from '$env/static/private';
 import { getDb } from '$lib/server/db';
-import { sendOrderConfirmation, sendPaymentFailed, sendSubscriptionConfirmation } from '$lib/server/email';
+import { sendOrderConfirmation, sendOwnerOrderNotification, sendPaymentFailed, sendSubscriptionConfirmation } from '$lib/server/email';
+import { getSetting } from '$lib/server/db';
 
 export async function POST({ request }) {
 	const body = await request.text();
@@ -155,24 +156,33 @@ export async function POST({ request }) {
 				} catch (e) {
 					console.error('Stock decrement failed:', e);
 				}
-				try {
-					const shippingAddr = shipping?.address ? {
+				const orderData = {
+					id: order.id,
+					items: enrichedItems,
+					totalCents: order.total_cents,
+					shippingMethod: (shippingCost?.shipping_rate as any)?.display_name,
+					shippingCents: shippingCost?.amount_total || 0,
+					shippingAddress: shipping?.address ? {
 						line1: shipping.address.line1,
 						line2: shipping.address.line2 || '',
 						city: shipping.address.city,
 						state: shipping.address.state,
 						postal_code: shipping.address.postal_code
-					} : undefined;
-					await sendOrderConfirmation(customerEmail, customerName, {
-						id: order.id,
-						items: enrichedItems,
-						totalCents: order.total_cents,
-						shippingMethod: (shippingCost?.shipping_rate as any)?.display_name,
-						shippingCents: shippingCost?.amount_total || 0,
-						shippingAddress: shippingAddr
-					});
+					} : undefined
+				};
+				try {
+					await sendOrderConfirmation(customerEmail, customerName, orderData);
 				} catch (e) {
 					console.error('Email send failed:', e);
+				}
+				// Send owner notification
+				try {
+					const ownerEmail = getSetting('owner_notification_email');
+					if (ownerEmail) {
+						await sendOwnerOrderNotification(ownerEmail, customerName, customerEmail, orderData);
+					}
+				} catch (e) {
+					console.error('Owner notification email failed:', e);
 				}
 			}
 		}

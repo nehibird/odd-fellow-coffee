@@ -10,6 +10,12 @@ export interface CartItem {
 	image?: string;
 	dropId?: number;
 	dropItemId?: number;
+	deliveryDate?: string;
+	category?: string;
+}
+
+function itemKey(i: { productId: number; variant?: string; dropId?: number; deliveryDate?: string }): string {
+	return `${i.productId}-${i.variant || ''}-${i.dropId || ''}-${i.deliveryDate || ''}`;
 }
 
 function createCartStore() {
@@ -24,8 +30,8 @@ function createCartStore() {
 		subscribe,
 		add(item: CartItem) {
 			update((items) => {
-				const key = `${item.productId}-${item.variant || ''}-${item.dropId || ''}`;
-				const existing = items.find((i) => `${i.productId}-${i.variant || ''}-${i.dropId || ''}` === key);
+				const key = itemKey(item);
+				const existing = items.find((i) => itemKey(i) === key);
 				if (existing) {
 					existing.quantity += item.quantity;
 				} else {
@@ -35,18 +41,18 @@ function createCartStore() {
 				return [...items];
 			});
 		},
-		remove(productId: number, variant?: string, dropId?: number) {
+		remove(productId: number, variant?: string, dropId?: number, deliveryDate?: string) {
 			update((items) => {
-				const key = `${productId}-${variant || ''}-${dropId || ''}`;
-				const filtered = items.filter((i) => `${i.productId}-${i.variant || ''}-${i.dropId || ''}` !== key);
+				const key = itemKey({ productId, variant, dropId, deliveryDate });
+				const filtered = items.filter((i) => itemKey(i) !== key);
 				persist(filtered);
 				return filtered;
 			});
 		},
-		updateQuantity(productId: number, variant: string | undefined, quantity: number, dropId?: number) {
+		updateQuantity(productId: number, variant: string | undefined, quantity: number, dropId?: number, deliveryDate?: string) {
 			update((items) => {
-				const key = `${productId}-${variant || ''}-${dropId || ''}`;
-				const item = items.find((i) => `${i.productId}-${i.variant || ''}-${i.dropId || ''}` === key);
+				const key = itemKey({ productId, variant, dropId, deliveryDate });
+				const item = items.find((i) => itemKey(i) === key);
 				if (item) item.quantity = Math.max(1, quantity);
 				persist(items);
 				return [...items];

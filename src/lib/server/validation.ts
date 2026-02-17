@@ -51,7 +51,7 @@ export function verifyEmailToken(email: string, token: string): boolean {
 const VALID_ORDER_STATUSES = new Set(['pending', 'confirmed', 'fulfilled']);
 const VALID_ORDER_STAGES = new Set(['ordered', 'baking', 'ready', 'picked_up', 'shipped', 'delivered']);
 const VALID_DROP_STATUSES = new Set(['scheduled', 'live', 'sold_out', 'closed']);
-const VALID_FREQUENCIES = new Set(['weekly', 'biweekly', 'monthly']);
+const VALID_FREQUENCIES = new Set(['twice_weekly', 'weekly', 'biweekly', 'monthly']);
 
 export function isValidOrderStatus(s: string): boolean {
 	return VALID_ORDER_STATUSES.has(s);

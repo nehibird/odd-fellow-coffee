@@ -77,6 +77,10 @@
 				<h2 class="text-xl font-semibold">Drops</h2>
 				<p class="text-gray-500">Manage bake day drops</p>
 			</a>
+			<a href="/admin/settings" class="rounded-xl border p-6 transition-shadow hover:shadow-md">
+				<h2 class="text-xl font-semibold">Settings</h2>
+				<p class="text-gray-500">Site configuration</p>
+			</a>
 		</div>
 	{/if}
 </section>

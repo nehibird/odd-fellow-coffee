@@ -13,6 +13,7 @@
 	let stripeCheckout: any = null;
 
 	$: total = items.reduce((sum, i) => sum + i.price_cents * i.quantity, 0);
+	$: hasBakery = items.some((i) => i.category === 'bakery');
 
 	async function checkout() {
 		loading = true;
@@ -119,19 +120,25 @@
 			<p class="mt-8 text-gray-500">Your cart is empty.</p>
 			<a href="/shop" class="mt-4 inline-block rounded-full bg-black px-6 py-2 text-white hover:bg-medium-carmine">Browse Shop</a>
 		{:else}
+			{#if hasBakery}
+				<div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+					<strong>Bread orders are local only.</strong> Bakery items are available for delivery or pickup in the Tonkawa area (zip 74653) only. Non-local addresses will be rejected at checkout.
+				</div>
+			{/if}
 			<div class="mt-6 space-y-4">
 				{#each items as item}
 					<div class="flex items-center justify-between rounded-xl border p-4">
 						<div>
 							<h3 class="font-semibold">{item.name}</h3>
 							{#if item.variant}<p class="text-sm text-gray-500">{item.variant}</p>{/if}
+							{#if item.deliveryDate}<p class="text-sm text-gray-500">Delivery: {item.deliveryDate}</p>{/if}
 							<p class="text-medium-carmine font-bold">${(item.price_cents / 100).toFixed(2)}</p>
 						</div>
 						<div class="flex items-center gap-3">
-							<button class="rounded bg-gray-100 px-3 py-1" on:click={() => cart.updateQuantity(item.productId, item.variant, item.quantity - 1, item.dropId)}>-</button>
+							<button class="rounded bg-gray-100 px-3 py-1" on:click={() => cart.updateQuantity(item.productId, item.variant, item.quantity - 1, item.dropId, item.deliveryDate)}>-</button>
 							<span class="w-8 text-center">{item.quantity}</span>
-							<button class="rounded bg-gray-100 px-3 py-1" on:click={() => cart.updateQuantity(item.productId, item.variant, item.quantity + 1, item.dropId)}>+</button>
-							<button class="ml-4 text-red-500 hover:text-red-700" on:click={() => cart.remove(item.productId, item.variant, item.dropId)}>Remove</button>
+							<button class="rounded bg-gray-100 px-3 py-1" on:click={() => cart.updateQuantity(item.productId, item.variant, item.quantity + 1, item.dropId, item.deliveryDate)}>+</button>
+							<button class="ml-4 text-red-500 hover:text-red-700" on:click={() => cart.remove(item.productId, item.variant, item.dropId, item.deliveryDate)}>Remove</button>
 						</div>
 					</div>
 				{/each}

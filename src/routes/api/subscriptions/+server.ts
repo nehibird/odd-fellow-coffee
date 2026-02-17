@@ -12,6 +12,7 @@ export async function GET({ url }) {
 	const db = getDb();
 	const subs = db.prepare(
 		`SELECT s.id, s.frequency, s.status, s.current_period_end, s.cancel_at_period_end,
+		        s.variant, s.price_cents, s.shipping_name, s.shipping_address,
 		        p.name as product_name
 		 FROM subscriptions s
 		 LEFT JOIN products p ON p.id = s.product_id

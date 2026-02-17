@@ -170,20 +170,38 @@ ${esc(address.city)}, ${esc(address.state)} ${esc(address.postal_code)}
 // ─── Estimated Arrival ──────────────────────────────────────────
 
 function estimatedArrivalBlock(shippingMethod?: string): string {
-	// TODO: Get actual roast/ship dates from Deborah
-	// For now, show placeholder estimates based on shipping method
-	const isLocal = shippingMethod?.toLowerCase().includes('local');
-	const estimate = isLocal ? '1-2 business days' : '3-7 business days';
-	const detail = isLocal
-		? 'Your order will be hand-delivered to the Tonkawa area.'
-		: 'Your order is freshly roasted to order. Please allow time for roasting and shipping.';
+	const isPickup = shippingMethod?.toLowerCase().includes('pickup');
+	const isLocal = shippingMethod?.toLowerCase().includes('local') && !isPickup;
+
+	if (isPickup) {
+		return `
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid ${BRAND.border};border-radius:8px;width:100%;">
+<tr><td style="padding:16px;">
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Pickup Instructions</p>
+<p style="margin:0 0 4px;font-size:18px;font-weight:700;color:${BRAND.dark};">Ready for pickup</p>
+<p style="margin:0 0 8px;font-size:13px;color:${BRAND.textMuted};">Available Monday & Friday at 4:00 PM</p>
+<p style="margin:0;font-size:13px;color:${BRAND.textMuted};">Pickup address will be provided separately. Reply to this email if you need directions.</p>
+</td></tr>
+</table>`;
+	}
+
+	if (isLocal) {
+		return `
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid ${BRAND.border};border-radius:8px;width:100%;">
+<tr><td style="padding:16px;">
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Local Delivery</p>
+<p style="margin:0 0 4px;font-size:18px;font-weight:700;color:${BRAND.dark};">1-2 business days</p>
+<p style="margin:0;font-size:13px;color:${BRAND.textMuted};">Your order will be hand-delivered to the Tonkawa area. Deliveries go out Monday & Friday at 5:30 PM.</p>
+</td></tr>
+</table>`;
+	}
 
 	return `
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid ${BRAND.border};border-radius:8px;width:100%;">
 <tr><td style="padding:16px;">
 <p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Estimated Arrival</p>
-<p style="margin:0 0 4px;font-size:18px;font-weight:700;color:${BRAND.dark};">${estimate}</p>
-<p style="margin:0;font-size:13px;color:${BRAND.textMuted};">${detail}</p>
+<p style="margin:0 0 4px;font-size:18px;font-weight:700;color:${BRAND.dark};">3-7 business days</p>
+<p style="margin:0;font-size:13px;color:${BRAND.textMuted};">Your order is freshly roasted to order. Please allow time for roasting and shipping.</p>
 </td></tr>
 </table>`;
 }
@@ -394,6 +412,47 @@ ${btn(updateUrl, 'Update Payment Method', BRAND.red)}
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
 		to: email,
 		subject: 'Payment Failed - Action Required - Odd Fellow Coffee',
+		html
+	});
+}
+
+export async function sendOwnerOrderNotification(
+	ownerEmail: string,
+	customerName: string,
+	customerEmail: string,
+	order: OrderData
+) {
+	const addrBlock = order.shippingAddress
+		? `<p style="margin:8px 0 0;font-size:14px;line-height:1.6;">
+${esc(order.shippingAddress.line1)}${order.shippingAddress.line2 ? '<br>' + esc(order.shippingAddress.line2) : ''}<br>
+${esc(order.shippingAddress.city)}, ${esc(order.shippingAddress.state)} ${esc(order.shippingAddress.postal_code)}
+</p>`
+		: '';
+
+	const html = emailShell(`
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">New Order</p>
+<h1 style="margin:0 0 8px;font-size:28px;color:${BRAND.dark};">Order #${order.id}</h1>
+<p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};">
+<strong style="color:${BRAND.dark};">${esc(customerName)}</strong> (${esc(customerEmail)})
+</p>
+
+${receiptTable(order)}
+
+${order.shippingMethod ? `
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;background-color:${BRAND.lightBg};border-radius:8px;width:100%;">
+<tr><td style="padding:16px;">
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Fulfillment</p>
+<p style="margin:0;font-size:14px;font-weight:600;color:${BRAND.dark};">${esc(order.shippingMethod)}</p>
+${customerName ? `<p style="margin:4px 0 0;font-size:14px;color:${BRAND.textMuted};">${esc(customerName)}</p>` : ''}
+${addrBlock}
+</td></tr>
+</table>` : ''}
+`);
+
+	await transporter.sendMail({
+		from: `"Odd Fellow Coffee Orders" <${FROM_EMAIL}>`,
+		to: ownerEmail,
+		subject: `New Order #${order.id} — ${customerName || customerEmail}`,
 		html
 	});
 }
