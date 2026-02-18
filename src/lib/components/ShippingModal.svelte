@@ -7,6 +7,7 @@
 	export let frequency: string;
 	export let priceCents: number;
 	export let subPrice: number;
+	export let category: string = '';
 
 	const dispatch = createEventDispatcher();
 
@@ -34,6 +35,8 @@
 		'SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'
 	];
 
+	$: isBakery = category === 'bakery';
+
 	function validate(): string | null {
 		if (!email.trim()) return 'Email is required';
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return 'Enter a valid email address';
@@ -42,6 +45,7 @@
 		if (!city.trim()) return 'City is required';
 		if (!state) return 'State is required';
 		if (!/^\d{5}$/.test(zip.trim())) return 'Enter a valid 5-digit zip code';
+		if (isBakery && zip.trim() !== '74653') return 'Bread subscriptions are available for local delivery only (Tonkawa 74653)';
 		return null;
 	}
 
@@ -94,6 +98,12 @@
 			<h2 class="text-lg font-bold">Shipping Address</h2>
 			<button on:click={() => dispatch('close')} class="text-2xl leading-none text-gray-400 hover:text-gray-600">&times;</button>
 		</div>
+
+		{#if isBakery}
+			<div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-center text-sm font-medium text-amber-800">
+				Bread subscriptions are local delivery only — Tonkawa area (74653)
+			</div>
+		{/if}
 
 		<!-- Order Summary -->
 		<div class="mb-4 rounded-lg bg-gray-50 p-3 text-sm">
