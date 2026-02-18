@@ -106,6 +106,19 @@
 	let showShippingModal = false;
 
 	$: estimatedDelivery = (() => {
+		if (isBakery) {
+			// Bakery: next Mon or Fri at least 2 days out
+			const deliveryDays = [1, 5]; // Mon, Fri
+			const cutoff = new Date();
+			cutoff.setDate(cutoff.getDate() + 2);
+			const scan = new Date(cutoff);
+			for (let i = 0; i < 7; i++) {
+				if (deliveryDays.includes(scan.getDay())) {
+					return scan.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+				}
+				scan.setDate(scan.getDate() + 1);
+			}
+		}
 		const date = new Date();
 		date.setDate(date.getDate() + 7);
 		return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -193,6 +206,9 @@
 			</button>
 		{:else}
 			<div class="mt-2 space-y-2 rounded-lg border border-medium-carmine bg-red-50 p-3">
+				{#if isBakery}
+					<p class="text-center text-xs font-semibold text-medium-carmine">Local delivery &amp; pickup only — Tonkawa (74653)</p>
+				{/if}
 				<div class="text-center">
 					<span class="text-sm text-gray-500 line-through">${(currentPrice / 100).toFixed(2)}</span>
 					<span class="ml-2 text-lg font-bold text-medium-carmine">${(subPrice / 100).toFixed(2)}</span>
@@ -234,6 +250,7 @@
 		frequency={subFrequency}
 		priceCents={currentPrice}
 		{subPrice}
+		category={product.category}
 		on:close={() => (showShippingModal = false)}
 	/>
 {/if}
