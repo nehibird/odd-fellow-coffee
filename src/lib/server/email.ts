@@ -345,17 +345,21 @@ export async function sendSubscriptionConfirmation(
 
 ${divider()}
 
+<p style="margin:0 0 8px;font-size:14px;font-weight:600;color:${BRAND.dark};">Managing Your Subscription</p>
+<p style="margin:0 0 16px;font-size:13px;color:${BRAND.textMuted};line-height:1.6;">
+You're in control. Visit your subscription page anytime to view your delivery schedule, see upcoming orders, or adjust your plan. Just enter the email address you used to subscribe.
+</p>
 <p style="text-align:center;margin:0 0 16px;">
-${btn(BRAND.siteUrl + '/subscriptions', 'Manage Subscription')}
+${btn(BRAND.siteUrl + '/subscriptions', 'My Subscription')}
 </p>
 
-<p style="text-align:center;margin:0;font-size:13px;color:${BRAND.textMuted};">You can pause or cancel anytime. Questions? Just reply to this email.</p>
+<p style="text-align:center;margin:0;font-size:13px;color:${BRAND.textMuted};">Questions about your subscription? Just reply to this email and we'll help you out.</p>
 `);
 
 	await transporter.sendMail({
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
 		to: email,
-		subject: 'Subscription Confirmed - Odd Fellow Coffee',
+		subject: 'Welcome to Your Coffee Subscription! - Odd Fellow Coffee',
 		html
 	});
 }
@@ -388,6 +392,206 @@ ${btn(BRAND.siteUrl + '/subscriptions', 'Manage Subscription')}
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
 		to: email,
 		subject: 'Subscription Canceled - Odd Fellow Coffee',
+		html
+	});
+}
+
+export async function sendOwnerSubscriptionNotification(
+	ownerEmail: string,
+	customerEmail: string,
+	productName: string,
+	variant: string | null,
+	frequency: string,
+	priceCents: number,
+	shippingName: string | null,
+	shippingAddress: { line1: string; line2?: string; city: string; state: string; postal_code: string } | null,
+	nextDeliveryDate: string
+) {
+	const variantText = variant ? ` (${esc(variant)})` : '';
+	const freqLabel = frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Every 2 Weeks' : 'Monthly';
+
+	const addrBlock = shippingAddress
+		? `<p style="margin:8px 0 0;font-size:14px;line-height:1.6;">
+${esc(shippingAddress.line1)}${shippingAddress.line2 ? '<br>' + esc(shippingAddress.line2) : ''}<br>
+${esc(shippingAddress.city)}, ${esc(shippingAddress.state)} ${esc(shippingAddress.postal_code)}
+</p>`
+		: '<p style="margin:8px 0 0;font-size:14px;color:' + BRAND.textMuted + ';">No address provided</p>';
+
+	const html = emailShell(`
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">New Subscription</p>
+<h1 style="margin:0 0 8px;font-size:28px;color:${BRAND.dark};">New Subscriber!</h1>
+<p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};">
+<strong style="color:${BRAND.dark};">${esc(customerEmail)}</strong> just subscribed.
+</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background-color:${BRAND.lightBg};border-radius:8px;width:100%;">
+<tr><td style="padding:20px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td>
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Subscription Details</p>
+<p style="margin:0 0 8px;font-size:16px;font-weight:700;color:${BRAND.dark};">${esc(productName)}${variantText}</p>
+<p style="margin:0 0 4px;font-size:14px;color:${BRAND.textMuted};">${freqLabel} — $${(priceCents / 100).toFixed(2)}/delivery</p>
+</td>
+</tr>
+</table>
+</td></tr>
+</table>
+
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;border:1px solid ${BRAND.border};border-radius:8px;width:100%;">
+<tr><td style="padding:16px;">
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">First Delivery</p>
+<p style="margin:0;font-size:18px;font-weight:700;color:${BRAND.dark};">${esc(nextDeliveryDate)}</p>
+</td></tr>
+</table>
+
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background-color:${BRAND.lightBg};border-radius:8px;width:100%;">
+<tr><td style="padding:16px;">
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Ship To</p>
+${shippingName ? `<p style="margin:0 0 4px;font-size:14px;font-weight:600;color:${BRAND.dark};">${esc(shippingName)}</p>` : ''}
+${addrBlock}
+</td></tr>
+</table>
+
+${divider()}
+
+<p style="text-align:center;margin:0;">
+${btn(BRAND.siteUrl + '/admin/subscriptions', 'View in Admin')}
+</p>
+`);
+
+	await transporter.sendMail({
+		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		to: ownerEmail,
+		subject: `New Subscription — ${customerEmail} (${productName})`,
+		html
+	});
+}
+
+export async function sendDeliveryDayReminder(
+	email: string,
+	productName: string,
+	variant: string | null,
+	shippingMethod: string | null,
+	shippingAddress: { line1: string; line2?: string; city: string; state: string; postal_code: string } | null
+) {
+	const variantText = variant ? ` (${esc(variant)})` : '';
+	const isLocal = !shippingAddress || shippingAddress.postal_code === '74653';
+
+	const deliveryInfo = isLocal
+		? `<p style="margin:0 0 4px;font-size:18px;font-weight:700;color:${BRAND.dark};">Local delivery today</p>
+<p style="margin:0;font-size:13px;color:${BRAND.textMuted};">Your order will be hand-delivered this evening by 5:30 PM.</p>`
+		: `<p style="margin:0 0 4px;font-size:18px;font-weight:700;color:${BRAND.dark};">Shipping today</p>
+<p style="margin:0;font-size:13px;color:${BRAND.textMuted};">Your freshly roasted coffee is being prepared for shipment.</p>`;
+
+	const html = emailShell(`
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Delivery Day</p>
+<h1 style="margin:0 0 8px;font-size:28px;color:${BRAND.dark};">Your coffee is on its way!</h1>
+<p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};">Your subscription delivery is scheduled for today.</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background-color:${BRAND.lightBg};border-radius:8px;width:100%;">
+<tr><td style="padding:20px;">
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Today's Delivery</p>
+<p style="margin:0;font-size:16px;font-weight:700;color:${BRAND.dark};">${esc(productName)}${variantText}</p>
+</td></tr>
+</table>
+
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;border:1px solid ${BRAND.border};border-radius:8px;width:100%;">
+<tr><td style="padding:16px;">
+${deliveryInfo}
+</td></tr>
+</table>
+
+${shippingAddress ? `
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background-color:${BRAND.lightBg};border-radius:8px;width:100%;">
+<tr><td style="padding:16px;">
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Delivering To</p>
+<p style="margin:0;font-size:14px;line-height:1.6;">
+${esc(shippingAddress.line1)}${shippingAddress.line2 ? '<br>' + esc(shippingAddress.line2) : ''}<br>
+${esc(shippingAddress.city)}, ${esc(shippingAddress.state)} ${esc(shippingAddress.postal_code)}
+</p>
+</td></tr>
+</table>` : ''}
+
+${divider()}
+
+<p style="margin:0 0 8px;font-size:14px;font-weight:600;color:${BRAND.dark};">Manage Your Subscription</p>
+<p style="margin:0 0 16px;font-size:13px;color:${BRAND.textMuted};line-height:1.6;">
+Visit your subscription page to view your delivery schedule, update your preferences, or adjust your plan.
+</p>
+<p style="text-align:center;margin:0 0 16px;">
+${btn(BRAND.siteUrl + '/subscriptions', 'My Subscription')}
+</p>
+
+<p style="text-align:center;margin:0;font-size:13px;color:${BRAND.textMuted};">Questions? Just reply to this email.</p>
+`);
+
+	await transporter.sendMail({
+		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		to: email,
+		subject: 'Your Coffee Is Coming Today! - Odd Fellow Coffee',
+		html
+	});
+}
+
+interface DeliveryDigestItem {
+	customerEmail: string;
+	shippingName: string | null;
+	productName: string;
+	variant: string | null;
+	frequency: string;
+	shippingAddress: { line1: string; line2?: string; city: string; state: string; postal_code: string } | null;
+}
+
+export async function sendOwnerDailyDigest(
+	ownerEmail: string,
+	deliveries: DeliveryDigestItem[],
+	dateStr: string
+) {
+	if (deliveries.length === 0) return;
+
+	const rows = deliveries.map((d, i) => {
+		const addr = d.shippingAddress
+			? `${esc(d.shippingAddress.line1)}, ${esc(d.shippingAddress.city)}, ${esc(d.shippingAddress.state)} ${esc(d.shippingAddress.postal_code)}`
+			: 'No address';
+		const variantText = d.variant ? ` (${esc(d.variant)})` : '';
+		return `
+<tr style="${i % 2 === 1 ? 'background-color:' + BRAND.lightBg + ';' : ''}">
+<td style="padding:10px 12px;border-bottom:1px solid ${BRAND.border};font-size:14px;">
+<strong>${esc(d.shippingName || d.customerEmail)}</strong><br>
+<span style="color:${BRAND.textMuted};font-size:12px;">${esc(d.customerEmail)}</span>
+</td>
+<td style="padding:10px 12px;border-bottom:1px solid ${BRAND.border};font-size:14px;">${esc(d.productName)}${variantText}</td>
+<td style="padding:10px 12px;border-bottom:1px solid ${BRAND.border};font-size:13px;color:${BRAND.textMuted};">${esc(addr)}</td>
+</tr>`;
+	}).join('');
+
+	const html = emailShell(`
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Daily Delivery Digest</p>
+<h1 style="margin:0 0 8px;font-size:28px;color:${BRAND.dark};">Today's Deliveries</h1>
+<p style="margin:0 0 4px;font-size:15px;color:${BRAND.textMuted};">${esc(dateStr)}</p>
+<p style="margin:0 0 24px;font-size:18px;font-weight:700;color:${BRAND.dark};">${deliveries.length} delivery${deliveries.length === 1 ? '' : 'ies'} to fulfill</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+<tr style="background-color:${BRAND.dark};">
+<td style="padding:10px 12px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#ffffff;">Customer</td>
+<td style="padding:10px 12px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#ffffff;">Product</td>
+<td style="padding:10px 12px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#ffffff;">Address</td>
+</tr>
+${rows}
+</table>
+
+${divider()}
+
+<p style="text-align:center;margin:0;">
+${btn(BRAND.siteUrl + '/admin/subscriptions', 'Open Admin Panel')}
+</p>
+`);
+
+	await transporter.sendMail({
+		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		to: ownerEmail,
+		subject: `${deliveries.length} Delivery${deliveries.length === 1 ? '' : 'ies'} Today — ${dateStr}`,
 		html
 	});
 }
@@ -491,11 +695,15 @@ export async function sendSubscriptionFulfilled(
 
 ${divider()}
 
+<p style="margin:0 0 8px;font-size:14px;font-weight:600;color:${BRAND.dark};">Manage Your Subscription</p>
+<p style="margin:0 0 16px;font-size:13px;color:${BRAND.textMuted};line-height:1.6;">
+View your delivery schedule, see upcoming orders, or adjust your plan anytime.
+</p>
 <p style="text-align:center;margin:0 0 16px;">
-${btn(BRAND.siteUrl + '/subscriptions', 'Manage Subscription')}
+${btn(BRAND.siteUrl + '/subscriptions', 'My Subscription')}
 </p>
 
-<p style="text-align:center;margin:0;font-size:13px;color:${BRAND.textMuted};">Enjoying your coffee? Tell a friend!</p>
+<p style="text-align:center;margin:0;font-size:13px;color:${BRAND.textMuted};">Enjoying your coffee? Tell a friend! Questions? Reply to this email.</p>
 `);
 
 	await transporter.sendMail({
