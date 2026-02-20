@@ -42,11 +42,13 @@ export async function POST({ request }) {
 			if (subId) {
 				const stripeSub = await stripe.subscriptions.retrieve(subId as string);
 
-				// Extract shipping info
-				const shipping = session.shipping_details;
-				let shippingName = null;
-				let shippingAddress = null;
-				if (shipping?.address) {
+				// Extract shipping info — subscription mode uses metadata (not shipping_details)
+				// because Stripe doesn't support shipping_address_collection for subscriptions
+				let shippingName = session.metadata?.shipping_name || null;
+				let shippingAddress = session.metadata?.shipping_address || null;
+				// Fallback: also check shipping_details in case Stripe adds support
+				if (!shippingAddress && session.shipping_details?.address) {
+					const shipping = session.shipping_details;
 					shippingName = shipping.name || '';
 					shippingAddress = JSON.stringify({
 						line1: shipping.address.line1,
