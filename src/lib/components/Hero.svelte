@@ -15,7 +15,7 @@
 				Beans for the brew and bread for the soul
 			</h2>
 			<ul class="list-inside list-disc pb-10 text-sm font-normal lg:text-base">
-				<li>Freshly prepared homemmade sourdough bread</li>
+				<li>Freshly prepared homemade sourdough bread</li>
 				<li class="pt-6">Freshly roasted coffee beans</li>
 			</ul>
 			<div

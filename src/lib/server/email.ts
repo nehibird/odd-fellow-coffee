@@ -14,6 +14,8 @@ const transporter = nodemailer.createTransport({
 	auth: { user: SMTP_USER, pass: SMTP_PASS }
 });
 
+const REPLY_TO = 'oddfellowcoffee@birdherd.media';
+
 function esc(str: string): string {
 	return str
 		.replace(/&/g, '&amp;')
@@ -238,6 +240,7 @@ ${btn(BRAND.siteUrl + '/shop', 'Continue Shopping')}
 
 	await transporter.sendMail({
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
 		to: email,
 		subject: `Order #${order.id} Confirmed - Odd Fellow Coffee`,
 		html
@@ -282,6 +285,7 @@ ${btn(BRAND.siteUrl, 'Visit Our Site')}
 
 	await transporter.sendMail({
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
 		to: email,
 		subject: `Reservation Confirmed for ${date} - Odd Fellow Coffee`,
 		html
@@ -305,7 +309,7 @@ export async function sendSubscriptionConfirmation(
 	const html = emailShell(`
 <p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Subscription Confirmed</p>
 <h1 style="margin:0 0 8px;font-size:28px;color:${BRAND.dark};">Welcome to the club!</h1>
-<p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};">Your subscription is all set. Fresh-roasted coffee, delivered on your schedule.</p>
+<p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};">Your subscription is all set. ${esc(productName)}, delivered on your schedule.</p>
 
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background-color:${BRAND.lightBg};border-radius:8px;width:100%;">
 <tr><td style="padding:20px;">
@@ -321,7 +325,7 @@ export async function sendSubscriptionConfirmation(
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;border-top:1px solid ${BRAND.border};padding-top:12px;">
 <tr>
-<td style="font-size:13px;color:${BRAND.textMuted};">Coffee</td>
+<td style="font-size:13px;color:${BRAND.textMuted};">${esc(productName)}</td>
 <td align="right" style="font-size:13px;">$${(priceCents / 100).toFixed(2)}</td>
 </tr>
 <tr>
@@ -358,6 +362,7 @@ ${btn(BRAND.siteUrl + '/subscriptions', 'My Subscription')}
 
 	await transporter.sendMail({
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
 		to: email,
 		subject: 'Welcome to Your Coffee Subscription! - Odd Fellow Coffee',
 		html
@@ -390,6 +395,7 @@ ${btn(BRAND.siteUrl + '/subscriptions', 'Manage Subscription')}
 
 	await transporter.sendMail({
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
 		to: email,
 		subject: 'Subscription Canceled - Odd Fellow Coffee',
 		html
@@ -462,6 +468,7 @@ ${btn(BRAND.siteUrl + '/admin/subscriptions', 'View in Admin')}
 
 	await transporter.sendMail({
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
 		to: ownerEmail,
 		subject: `New Subscription — ${customerEmail} (${productName})`,
 		html
@@ -528,6 +535,7 @@ ${btn(BRAND.siteUrl + '/subscriptions', 'My Subscription')}
 
 	await transporter.sendMail({
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
 		to: email,
 		subject: 'Your Coffee Is Coming Today! - Odd Fellow Coffee',
 		html
@@ -590,6 +598,7 @@ ${btn(BRAND.siteUrl + '/admin/subscriptions', 'Open Admin Panel')}
 
 	await transporter.sendMail({
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
 		to: ownerEmail,
 		subject: `${deliveries.length} Delivery${deliveries.length === 1 ? '' : 'ies'} Today — ${dateStr}`,
 		html
@@ -614,6 +623,7 @@ ${btn(updateUrl, 'Update Payment Method', BRAND.red)}
 
 	await transporter.sendMail({
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
 		to: email,
 		subject: 'Payment Failed - Action Required - Odd Fellow Coffee',
 		html
@@ -655,6 +665,7 @@ ${addrBlock}
 
 	await transporter.sendMail({
 		from: `"Odd Fellow Coffee Orders" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
 		to: ownerEmail,
 		subject: `New Order #${order.id} — ${customerName || customerEmail}`,
 		html
@@ -708,6 +719,7 @@ ${btn(BRAND.siteUrl + '/subscriptions', 'My Subscription')}
 
 	await transporter.sendMail({
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
 		to: email,
 		subject: 'Your Coffee Has Shipped! - Odd Fellow Coffee',
 		html
