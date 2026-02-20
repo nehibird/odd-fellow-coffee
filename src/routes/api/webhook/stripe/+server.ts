@@ -2,7 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { stripe } from '$lib/server/stripe';
 import { STRIPE_WEBHOOK_SECRET } from '$env/static/private';
 import { getDb } from '$lib/server/db';
-import { sendOrderConfirmation, sendOwnerOrderNotification, sendPaymentFailed, sendSubscriptionConfirmation } from '$lib/server/email';
+import { sendOrderConfirmation, sendOwnerOrderNotification, sendPaymentFailed, sendSubscriptionConfirmation, sendOwnerSubscriptionNotification, sendCancellationConfirmation } from '$lib/server/email';
 import { getSetting } from '$lib/server/db';
 
 export async function POST({ request }) {
@@ -87,6 +87,7 @@ export async function POST({ request }) {
 						const product = productId ? db.prepare('SELECT name FROM products WHERE id = ?').get(Number(productId)) as any : null;
 						const productDisplayName = product?.name || 'Coffee Subscription';
 						const shippingCents = session.metadata?.shipping_cents ? Number(session.metadata.shipping_cents) : 0;
+						const nextDeliveryFormatted = nextDelivery.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 						await sendSubscriptionConfirmation(
 							session.customer_email,
 							productDisplayName,
@@ -94,10 +95,36 @@ export async function POST({ request }) {
 							frequency || 'monthly',
 							priceCents || 0,
 							shippingCents,
-							nextDelivery.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+							nextDeliveryFormatted
 						);
 					} catch (e) {
 						console.error('Subscription confirmation email failed:', e);
+					}
+
+					// Send owner notification for new subscription
+					try {
+						const ownerEmail = getSetting('owner_notification_email');
+						if (ownerEmail) {
+							const product = productId ? db.prepare('SELECT name FROM products WHERE id = ?').get(Number(productId)) as any : null;
+							const productDisplayName = product?.name || 'Coffee Subscription';
+							let parsedAddr = null;
+							if (shippingAddress) {
+								try { parsedAddr = JSON.parse(shippingAddress); } catch { /* ignore */ }
+							}
+							await sendOwnerSubscriptionNotification(
+								ownerEmail,
+								session.customer_email,
+								productDisplayName,
+								variant || null,
+								frequency || 'monthly',
+								priceCents || 0,
+								shippingName,
+								parsedAddr,
+								nextDelivery.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+							);
+						}
+					} catch (e) {
+						console.error('Owner subscription notification failed:', e);
 					}
 				}
 			}
@@ -232,6 +259,19 @@ export async function POST({ request }) {
 		db.prepare(
 			"UPDATE subscriptions SET status = 'canceled' WHERE stripe_subscription_id = ?"
 		).run(sub.id);
+
+		// Send cancellation email to customer
+		const localSub = db.prepare(
+			'SELECT customer_email, product_id FROM subscriptions WHERE stripe_subscription_id = ?'
+		).get(sub.id) as any;
+		if (localSub?.customer_email) {
+			try {
+				const product = localSub.product_id ? db.prepare('SELECT name FROM products WHERE id = ?').get(localSub.product_id) as any : null;
+				await sendCancellationConfirmation(localSub.customer_email, product?.name || 'Coffee Subscription');
+			} catch (e) {
+				console.error('Cancellation email failed:', e);
+			}
+		}
 	}
 
 	if (event.type === 'invoice.payment_failed') {
