@@ -36,6 +36,7 @@
 	];
 
 	$: isBakery = category === 'bakery';
+	$: bakeryBlocked = isBakery && zip.trim().length === 5 && zip.trim() !== '74653';
 
 	function validate(): string | null {
 		if (!email.trim()) return 'Email is required';
@@ -117,10 +118,10 @@
 			<div class="flex justify-between">
 				<span>Shipping</span>
 				<span class="{isLocal ? 'text-green-600 font-medium' : ''}">
-					{#if !zip.trim()}TBD{:else if isLocal}FREE{:else}$5.99{/if}
+					{#if !zip.trim()}TBD{:else if isLocal}FREE{:else if bakeryBlocked}—{:else}$5.99{/if}
 				</span>
 			</div>
-			{#if zip.trim()}
+			{#if zip.trim() && !bakeryBlocked}
 				<div class="flex justify-between border-t pt-1 font-bold">
 					<span>Total</span>
 					<span>${(totalCents / 100).toFixed(2)}/{frequency === 'weekly' ? 'wk' : frequency === 'biweekly' ? '2wk' : 'mo'}</span>
@@ -166,16 +167,23 @@
 			</div>
 
 			{#if zip.trim()}
-				<p class="text-center text-sm {isLocal ? 'text-green-600 font-medium' : 'text-gray-500'}">
-					{isLocal ? 'Free local delivery!' : 'Flat rate shipping: $5.99'}
-				</p>
+				{#if bakeryBlocked}
+					<div class="rounded-lg border border-red-300 bg-red-50 p-3 text-center text-sm text-red-700">
+						<p class="font-semibold">Bread subscriptions are local delivery only</p>
+						<p class="mt-1">We can only deliver bread within the Tonkawa area (74653). Coffee subscriptions can ship anywhere!</p>
+					</div>
+				{:else}
+					<p class="text-center text-sm {isLocal ? 'text-green-600 font-medium' : 'text-gray-500'}">
+						{isLocal ? 'Free local delivery!' : 'Flat rate shipping: $5.99'}
+					</p>
+				{/if}
 			{/if}
 
 			{#if submitError}<p class="text-sm text-red-500">{submitError}</p>{/if}
 
 			<button
 				type="submit"
-				disabled={submitting}
+				disabled={submitting || bakeryBlocked}
 				class="w-full rounded-full bg-medium-carmine py-3 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
 			>
 				{submitting ? 'Processing...' : 'Complete Subscription'}
