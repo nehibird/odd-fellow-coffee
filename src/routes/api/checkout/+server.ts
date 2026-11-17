@@ -5,7 +5,7 @@ import { SITE_URL } from '$env/static/private';
 import { isValidEmail } from '$lib/server/validation';
 
 export async function POST({ request }) {
-	const { items, email, name, reservationData, dropId } = await request.json();
+	const { items, email, name, reservationData, dropId, shippingZip } = await request.json();
 
 	if (!items?.length) {
 		throw error(400, 'Items required');
@@ -116,12 +116,14 @@ export async function POST({ request }) {
 		).run(orderId, reservationData.date, reservationData.timeSlot, JSON.stringify(items), name || '', email);
 	}
 
-	// Collect shipping for non-reservation orders; shipping rate determined dynamically
+	// Collect shipping for non-reservation orders. The rate is fixed at session-create
+	// time from the ZIP the customer gave on the cart page (see stripe.ts).
 	const collectShipping = !reservationData;
+	const zip = typeof shippingZip === 'string' ? shippingZip.trim().slice(0, 5) : '';
 	const { clientSecret, sessionId } = await createCheckoutSession(
 		lineItems, email,
 		`${SITE_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`,
-		{ collectShipping, localOnly: hasBakery }
+		{ collectShipping, localOnly: hasBakery, shippingZip: zip }
 	);
 	db.prepare('UPDATE orders SET stripe_session_id = ? WHERE id = ?').run(sessionId, orderId);
 

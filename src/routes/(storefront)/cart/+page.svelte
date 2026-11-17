@@ -9,6 +9,9 @@
 	let loading = false;
 	let errorMsg = '';
 	let showCheckout = false;
+	// Collected before the Stripe session is created so the correct shipping rate
+	// can be set up front — Stripe no longer allows patching it in mid-checkout.
+	let shippingZip = '';
 	let checkoutContainer: HTMLDivElement;
 	let stripeCheckout: any = null;
 
@@ -16,6 +19,10 @@
 	$: hasBakery = items.some((i) => i.category === 'bakery');
 
 	async function checkout() {
+		if (!/^\d{5}$/.test(shippingZip.trim())) {
+			errorMsg = 'Please enter your 5-digit ZIP code so we can calculate shipping.';
+			return;
+		}
 		loading = true;
 		errorMsg = '';
 		try {
@@ -31,7 +38,8 @@
 						price_cents: i.price_cents,
 						dropItemId: i.dropItemId
 					})),
-					dropId: items[0]?.dropId || undefined
+					dropId: items[0]?.dropId || undefined,
+					shippingZip: shippingZip.trim()
 				})
 			});
 			const data = await res.json();
@@ -55,23 +63,9 @@
 			// Wait for Svelte to render the checkout container
 			await tick();
 
+			// No onShippingDetailsChange — the rate was already fixed from shippingZip.
 			stripeCheckout = await stripe.initEmbeddedCheckout({
-				clientSecret: data.clientSecret,
-				onShippingDetailsChange: async (event: any) => {
-					const shippingRes = await fetch('/api/checkout/shipping', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({
-							checkout_session_id: event.checkoutSessionId,
-							shipping_details: event.shippingDetails
-						})
-					});
-					const result = await shippingRes.json();
-					if (result.type === 'accept') {
-						return { type: 'accept' };
-					}
-					return { type: 'reject', errorMessage: result.message || 'Unable to ship to this address' };
-				}
+				clientSecret: data.clientSecret
 			});
 
 			stripeCheckout.mount(checkoutContainer);
@@ -149,6 +143,24 @@
 			</div>
 
 			<div class="mt-6 max-w-md space-y-3">
+				<label class="block">
+					<span class="text-sm font-medium">Delivery ZIP code</span>
+					<input
+						type="text"
+						inputmode="numeric"
+						maxlength="5"
+						bind:value={shippingZip}
+						placeholder="74653"
+						class="mt-1 w-full rounded-lg border px-3 py-2"
+					/>
+					<span class="mt-1 block text-xs text-gray-500">
+						{#if shippingZip.trim() === '74653'}
+							Free local delivery or pickup in Tonkawa.
+						{:else}
+							Tonkawa (74653) gets free delivery or pickup. Everywhere else is $5.99 flat-rate shipping.
+						{/if}
+					</span>
+				</label>
 				{#if errorMsg}<p class="text-sm text-red-500">{errorMsg}</p>{/if}
 				<button
 					on:click={checkout}
