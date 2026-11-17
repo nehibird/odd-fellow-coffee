@@ -2,7 +2,21 @@ import { error, json } from '@sveltejs/kit';
 import { stripe } from '$lib/server/stripe';
 import { STRIPE_WEBHOOK_SECRET } from '$env/static/private';
 import { getDb } from '$lib/server/db';
-import { sendOrderConfirmation, sendOwnerOrderNotification, sendPaymentFailed, sendSubscriptionConfirmation, sendOwnerSubscriptionNotification, sendCancellationConfirmation } from '$lib/server/email';
+import {
+	sendOrderConfirmation,
+	sendOwnerOrderNotification,
+	sendPaymentFailed,
+	sendSubscriptionConfirmation,
+	sendOwnerSubscriptionNotification,
+	sendCancellationConfirmation,
+	sendReservationConfirmation,
+	sendOwnerReservationNotification
+} from '$lib/server/email';
+import {
+	confirmReservation,
+	getReservationBySession,
+	releaseCapacity
+} from '$lib/server/reservations';
 import { getSetting } from '$lib/server/db';
 
 export async function POST({ request }) {
@@ -27,7 +41,9 @@ export async function POST({ request }) {
 			const productId = session.metadata?.product_id;
 			const frequency = session.metadata?.frequency;
 			const variant = session.metadata?.variant || null;
-			const priceCents = session.metadata?.price_cents ? Number(session.metadata.price_cents) : null;
+			const priceCents = session.metadata?.price_cents
+				? Number(session.metadata.price_cents)
+				: null;
 			const subId = session.subscription;
 
 			// Verify product_id references an actual product in our DB
@@ -86,10 +102,18 @@ export async function POST({ request }) {
 				// Send subscription confirmation email
 				if (session.customer_email) {
 					try {
-						const product = productId ? db.prepare('SELECT name FROM products WHERE id = ?').get(Number(productId)) as any : null;
+						const product = productId
+							? (db.prepare('SELECT name FROM products WHERE id = ?').get(Number(productId)) as any)
+							: null;
 						const productDisplayName = product?.name || 'Coffee Subscription';
-						const shippingCents = session.metadata?.shipping_cents ? Number(session.metadata.shipping_cents) : 0;
-						const nextDeliveryFormatted = nextDelivery.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+						const shippingCents = session.metadata?.shipping_cents
+							? Number(session.metadata.shipping_cents)
+							: 0;
+						const nextDeliveryFormatted = nextDelivery.toLocaleDateString('en-US', {
+							weekday: 'long',
+							month: 'long',
+							day: 'numeric'
+						});
 						await sendSubscriptionConfirmation(
 							session.customer_email,
 							productDisplayName,
@@ -107,11 +131,19 @@ export async function POST({ request }) {
 					try {
 						const ownerEmail = getSetting('owner_notification_email');
 						if (ownerEmail) {
-							const product = productId ? db.prepare('SELECT name FROM products WHERE id = ?').get(Number(productId)) as any : null;
+							const product = productId
+								? (db
+										.prepare('SELECT name FROM products WHERE id = ?')
+										.get(Number(productId)) as any)
+								: null;
 							const productDisplayName = product?.name || 'Coffee Subscription';
 							let parsedAddr = null;
 							if (shippingAddress) {
-								try { parsedAddr = JSON.parse(shippingAddress); } catch { /* ignore */ }
+								try {
+									parsedAddr = JSON.parse(shippingAddress);
+								} catch {
+									/* ignore */
+								}
 							}
 							await sendOwnerSubscriptionNotification(
 								ownerEmail,
@@ -122,7 +154,11 @@ export async function POST({ request }) {
 								priceCents || 0,
 								shippingName,
 								parsedAddr,
-								nextDelivery.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+								nextDelivery.toLocaleDateString('en-US', {
+									weekday: 'long',
+									month: 'long',
+									day: 'numeric'
+								})
 							);
 						}
 					} catch (e) {
@@ -130,15 +166,110 @@ export async function POST({ request }) {
 					}
 				}
 			}
+		} else if (getReservationBySession(db, session.id)) {
+			// ---- Drink reservation ----
+			//
+			// This is the ONLY place a reservation becomes 'confirmed'. It is checked
+			// before the generic order path because a drink reservation also has an
+			// order row, and it needs the reservation emails rather than the
+			// shipping-oriented order ones.
+			const confirmed = confirmReservation(db, session.id);
+
+			if (confirmed.outcome === 'already_confirmed') {
+				// Duplicate delivery or a Stripe retry. Do not email twice.
+				console.log(`Webhook: reservation for ${session.id} already confirmed, skipping`);
+				return json({ received: true });
+			}
+			if (confirmed.outcome === 'not_found') {
+				// getReservationBySession matched a moment ago, so this should be
+				// unreachable. Log loudly rather than drop a paid event in silence.
+				console.error(
+					`CRITICAL: paid session ${session.id} matched a reservation that vanished before confirmation`
+				);
+				return json({ received: true });
+			}
+			if (confirmed.outcome === 'revived') {
+				// The row had been cancelled or expired, yet Stripe says it was PAID.
+				// Honour it, because the money is taken — but capacity may now be
+				// over-committed and a human has to know.
+				console.error(
+					`CRITICAL: paid session ${session.id} revived a released reservation ` +
+						`(id ${confirmed.row?.id}, ${confirmed.row?.reservation_date} ${confirmed.row?.time_slot}). ` +
+						`Capacity may be over-committed for that slot.`
+				);
+			}
+
+			db.prepare("UPDATE orders SET status = 'confirmed' WHERE stripe_session_id = ?").run(
+				session.id
+			);
+
+			const row = getReservationBySession(db, session.id) as Record<string, any> | null;
+			let drinks: { name: string; quantity: number }[] = [];
+			try {
+				const parsed = JSON.parse((row?.items as string) || '[]');
+				if (Array.isArray(parsed)) {
+					drinks = parsed.map((i: any) => ({
+						name: String(i.name ?? 'Drink'),
+						quantity: Number(i.quantity ?? 1)
+					}));
+				}
+			} catch (e) {
+				console.error('Reservation items were not parseable JSON:', e);
+			}
+
+			const details = {
+				date: String(row?.reservation_date ?? ''),
+				timeSlot: String(row?.time_slot ?? ''),
+				drinks,
+				totalCents: Number(row?.total_cents ?? 0),
+				pickupLocation: (row?.pickup_location as string | null) ?? null
+			};
+			const customerEmail = String(row?.customer_email ?? session.customer_email ?? '');
+			const customerName = String(row?.customer_name ?? '');
+
+			// Email failures must never fail the webhook: Stripe would retry and the
+			// reservation is already confirmed, so a retry can only cause confusion.
+			if (customerEmail) {
+				try {
+					await sendReservationConfirmation(customerEmail, customerName, details);
+				} catch (e) {
+					console.error('Reservation confirmation email failed:', e);
+				}
+			}
+			try {
+				const ownerEmail = getSetting('owner_notification_email');
+				if (ownerEmail) {
+					await sendOwnerReservationNotification(
+						ownerEmail,
+						customerName,
+						customerEmail,
+						details,
+						confirmed.outcome === 'revived'
+					);
+				}
+			} catch (e) {
+				console.error('Owner reservation notification failed:', e);
+			}
 		} else {
 			// One-time payment — retrieve full session for shipping details
-			const fullSession = await stripe.checkout.sessions.retrieve(session.id, {
+			const fullSession = (await stripe.checkout.sessions.retrieve(session.id, {
 				expand: ['shipping_cost.shipping_rate']
-			}) as any;
-			const order = db.prepare('SELECT * FROM orders WHERE stripe_session_id = ?').get(session.id) as any;
+			})) as any;
+			const order = db
+				.prepare('SELECT * FROM orders WHERE stripe_session_id = ?')
+				.get(session.id) as any;
 			if (order) {
-				const customerEmail = session.customer_email || session.customer_details?.email || fullSession.customer_details?.email || fullSession.customer_email || order.customer_email;
-				const customerName = fullSession.shipping_details?.name || fullSession.customer_details?.name || order.customer_name || '';
+				const customerEmail =
+					session.customer_email ||
+					session.customer_details?.email ||
+					fullSession.customer_details?.email ||
+					fullSession.customer_email ||
+					order.customer_email;
+				const customerName =
+					fullSession.shipping_details?.name ||
+					fullSession.customer_details?.name ||
+					order.customer_name ||
+					'';
 				console.log('Webhook checkout.session.completed — email sources:', {
 					'session.customer_email': session.customer_email,
 					'session.customer_details?.email': session.customer_details?.email,
@@ -162,16 +293,40 @@ export async function POST({ request }) {
 					const shippingCents = shippingCost?.amount_total || 0;
 					db.prepare(
 						'UPDATE orders SET status = ?, customer_email = ?, customer_name = ?, shipping_name = ?, shipping_address = ?, shipping_method = ?, shipping_cents = ? WHERE id = ?'
-					).run('confirmed', customerEmail, customerName, shipping.name || '', addr, rateName, shippingCents, order.id);
+					).run(
+						'confirmed',
+						customerEmail,
+						customerName,
+						shipping.name || '',
+						addr,
+						rateName,
+						shippingCents,
+						order.id
+					);
 				} else {
-					db.prepare('UPDATE orders SET status = ?, customer_email = ?, customer_name = ? WHERE id = ?').run('confirmed', customerEmail, customerName, order.id);
+					db.prepare(
+						'UPDATE orders SET status = ?, customer_email = ?, customer_name = ? WHERE id = ?'
+					).run('confirmed', customerEmail, customerName, order.id);
 				}
 				// Decrement stock for tracked products + build enriched items for email
-				let enrichedItems: { productId: number; name: string; quantity: number; price_cents: number; variant?: string }[] = [];
+				let enrichedItems: {
+					productId: number;
+					name: string;
+					quantity: number;
+					price_cents: number;
+					variant?: string;
+				}[] = [];
 				try {
-					const orderItems = JSON.parse(order.items) as { productId: number; quantity: number; price_cents: number; variant?: string }[];
+					const orderItems = JSON.parse(order.items) as {
+						productId: number;
+						quantity: number;
+						price_cents: number;
+						variant?: string;
+					}[];
 					for (const item of orderItems) {
-						const product = item.productId ? db.prepare('SELECT name FROM products WHERE id = ?').get(item.productId) as any : null;
+						const product = item.productId
+							? (db.prepare('SELECT name FROM products WHERE id = ?').get(item.productId) as any)
+							: null;
 						enrichedItems.push({
 							...item,
 							name: product?.name || `Item #${item.productId}`
@@ -191,13 +346,15 @@ export async function POST({ request }) {
 					totalCents: order.total_cents,
 					shippingMethod: (shippingCost?.shipping_rate as any)?.display_name,
 					shippingCents: shippingCost?.amount_total || 0,
-					shippingAddress: shipping?.address ? {
-						line1: shipping.address.line1,
-						line2: shipping.address.line2 || '',
-						city: shipping.address.city,
-						state: shipping.address.state,
-						postal_code: shipping.address.postal_code
-					} : undefined
+					shippingAddress: shipping?.address
+						? {
+								line1: shipping.address.line1,
+								line2: shipping.address.line2 || '',
+								city: shipping.address.city,
+								state: shipping.address.state,
+								postal_code: shipping.address.postal_code
+							}
+						: undefined
 				};
 				try {
 					await sendOrderConfirmation(customerEmail, customerName, orderData);
@@ -220,7 +377,20 @@ export async function POST({ request }) {
 	if (event.type === 'checkout.session.expired') {
 		// Release drop inventory for abandoned checkouts
 		const session = event.data.object as any;
-		const order = db.prepare("SELECT * FROM orders WHERE stripe_session_id = ? AND status = 'pending'").get(session.id) as any;
+
+		// Release drink-slot capacity the same way. releaseCapacity only touches a
+		// 'pending' row, so a late 'expired' event cannot cancel a reservation that
+		// was already paid for, and calling it twice is a no-op.
+		const released = releaseCapacity(db, session.id);
+		if (released > 0) {
+			db.prepare("UPDATE orders SET status = 'expired' WHERE stripe_session_id = ?").run(
+				session.id
+			);
+			console.log(`Webhook: released drink capacity for abandoned session ${session.id}`);
+		}
+		const order = db
+			.prepare("SELECT * FROM orders WHERE stripe_session_id = ? AND status = 'pending'")
+			.get(session.id) as any;
 		if (order?.drop_id) {
 			try {
 				const items = JSON.parse(order.items) as { dropItemId: number; quantity: number }[];
@@ -233,7 +403,9 @@ export async function POST({ request }) {
 						}
 					}
 					// Reopen drop if it was marked sold_out
-					db.prepare("UPDATE drops SET status = 'live' WHERE id = ? AND status = 'sold_out'").run(order.drop_id);
+					db.prepare("UPDATE drops SET status = 'live' WHERE id = ? AND status = 'sold_out'").run(
+						order.drop_id
+					);
 				});
 				release();
 			} catch (e) {
@@ -258,18 +430,25 @@ export async function POST({ request }) {
 
 	if (event.type === 'customer.subscription.deleted') {
 		const sub = event.data.object as any;
-		db.prepare(
-			"UPDATE subscriptions SET status = 'canceled' WHERE stripe_subscription_id = ?"
-		).run(sub.id);
+		db.prepare("UPDATE subscriptions SET status = 'canceled' WHERE stripe_subscription_id = ?").run(
+			sub.id
+		);
 
 		// Send cancellation email to customer
-		const localSub = db.prepare(
-			'SELECT customer_email, product_id FROM subscriptions WHERE stripe_subscription_id = ?'
-		).get(sub.id) as any;
+		const localSub = db
+			.prepare(
+				'SELECT customer_email, product_id FROM subscriptions WHERE stripe_subscription_id = ?'
+			)
+			.get(sub.id) as any;
 		if (localSub?.customer_email) {
 			try {
-				const product = localSub.product_id ? db.prepare('SELECT name FROM products WHERE id = ?').get(localSub.product_id) as any : null;
-				await sendCancellationConfirmation(localSub.customer_email, product?.name || 'Coffee Subscription');
+				const product = localSub.product_id
+					? (db.prepare('SELECT name FROM products WHERE id = ?').get(localSub.product_id) as any)
+					: null;
+				await sendCancellationConfirmation(
+					localSub.customer_email,
+					product?.name || 'Coffee Subscription'
+				);
 			} catch (e) {
 				console.error('Cancellation email failed:', e);
 			}
@@ -283,9 +462,9 @@ export async function POST({ request }) {
 			db.prepare(
 				"UPDATE subscriptions SET status = 'past_due' WHERE stripe_subscription_id = ?"
 			).run(subId);
-			const localSub = db.prepare(
-				'SELECT customer_email FROM subscriptions WHERE stripe_subscription_id = ?'
-			).get(subId) as any;
+			const localSub = db
+				.prepare('SELECT customer_email FROM subscriptions WHERE stripe_subscription_id = ?')
+				.get(subId) as any;
 			if (localSub?.customer_email) {
 				try {
 					await sendPaymentFailed(localSub.customer_email, invoice.hosted_invoice_url || '');

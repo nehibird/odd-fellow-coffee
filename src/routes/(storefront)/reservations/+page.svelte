@@ -44,7 +44,19 @@
 					reservationData: { date, timeSlot: selectedSlot }
 				})
 			});
-			const data = await res.json();
+			const data = await res.json().catch(() => ({}));
+
+			// This page previously treated ANY response without a clientSecret as a
+			// successful "free reservation", so a 400/409/500 was shown to the
+			// customer as "Reservation Confirmed!" while nothing had been recorded
+			// and no payment taken. PR5 replaces this page; until then it must at
+			// least tell the truth.
+			if (!res.ok) {
+				errorMsg = data.message || 'We could not complete that reservation.';
+				loading = false;
+				return;
+			}
+
 			if (data.clientSecret) {
 				const { loadStripe } = await import('@stripe/stripe-js');
 				const stripe = await loadStripe(PUBLIC_STRIPE_PUBLISHABLE_KEY);
@@ -61,9 +73,8 @@
 					clientSecret: data.clientSecret
 				});
 				stripeCheckout.mount(checkoutContainer);
-			} else if (!data.clientSecret) {
-				// Free reservation (no payment needed for now)
-				success = true;
+			} else {
+				errorMsg = 'We could not start checkout. Please try again.';
 			}
 		} catch {
 			errorMsg = 'Something went wrong';
@@ -109,7 +120,14 @@
 			<div class="mt-8 max-w-md space-y-4">
 				<div>
 					<label for="date" class="block text-sm font-medium">Select Date</label>
-					<input type="date" id="date" bind:value={date} min={minDate} on:change={loadSlots} class="mt-1 w-full rounded border px-4 py-2" />
+					<input
+						type="date"
+						id="date"
+						bind:value={date}
+						min={minDate}
+						on:change={loadSlots}
+						class="mt-1 w-full rounded border px-4 py-2"
+					/>
 				</div>
 
 				{#if slots.length > 0}
@@ -119,7 +137,11 @@
 							{#each slots as slot}
 								{@const label = `${slot.start_time}-${slot.end_time}`}
 								<button
-									class="rounded-lg border p-2 text-sm transition-colors {selectedSlot === label ? 'border-medium-carmine bg-red-50 font-semibold' : 'hover:bg-gray-50'} {slot.available <= 0 ? 'cursor-not-allowed opacity-40' : ''}"
+									class="rounded-lg border p-2 text-sm transition-colors {selectedSlot === label
+										? 'border-medium-carmine bg-red-50 font-semibold'
+										: 'hover:bg-gray-50'} {slot.available <= 0
+										? 'cursor-not-allowed opacity-40'
+										: ''}"
 									disabled={slot.available <= 0}
 									on:click={() => (selectedSlot = label)}
 								>
@@ -132,7 +154,12 @@
 				{/if}
 
 				<input bind:value={name} placeholder="Your name" class="w-full rounded border px-4 py-2" />
-				<input bind:value={email} type="email" placeholder="Email" class="w-full rounded border px-4 py-2" />
+				<input
+					bind:value={email}
+					type="email"
+					placeholder="Email"
+					class="w-full rounded border px-4 py-2"
+				/>
 				{#if errorMsg}<p class="text-sm text-red-500">{errorMsg}</p>{/if}
 				<button
 					on:click={book}

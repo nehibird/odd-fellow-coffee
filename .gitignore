@@ -6,3 +6,6 @@ data/
 .env
 .env.backup
 @eaDir/
+
+# Local MCP server config — contains plaintext API keys
+.mcp.json

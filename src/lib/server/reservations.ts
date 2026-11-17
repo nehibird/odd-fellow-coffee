@@ -3,6 +3,7 @@ import {
 	DRINK_SLOT_TYPE,
 	DRINKS_DEFAULT_CUTOFF_HOUR,
 	DRINKS_DEFAULT_DAILY_CAP,
+	DRINK_CATEGORY,
 	SETTINGS,
 	getIntSettingOn,
 	getSettingOn
@@ -83,6 +84,12 @@ export type HoldReason =
 	| 'no_such_slot'
 	| 'slot_full'
 	| 'daily_cap_reached';
+
+/** Reasons buildDrinkOrder can refuse an order. */
+export type DrinkOrderReason = 'bad_items' | 'not_a_drink' | 'bad_drink_count';
+
+/** Every reason any part of this module can refuse for. */
+export type RefusalReason = HoldReason | OrderableReason | DrinkOrderReason;
 
 export interface DrinkSlot {
 	id: number;
@@ -276,6 +283,108 @@ export function isDateOrderable(
 	return { ok: true };
 }
 
+export interface DrinkOrderItem {
+	productId: number;
+	quantity: number;
+}
+
+export interface DrinkLineItem {
+	/** Kept so orders.items has the same shape as every other order path. */
+	productId: number;
+	name: string;
+	price_cents: number;
+	quantity: number;
+}
+
+export interface DrinkOrderResult {
+	ok: boolean;
+	lineItems?: DrinkLineItem[];
+	drinkCount?: number;
+	totalCents?: number;
+	reason?: DrinkOrderReason;
+}
+
+/**
+ * Validate a requested drink order and price it SERVER-SIDE.
+ *
+ * Prices come from the products table every time. The client's numbers are
+ * never read — the only thing taken from the request is which product and how
+ * many, both of which are re-checked here.
+ *
+ * Only `active = 1` rows in the drinks category qualify, so turning a drink off
+ * in the admin immediately stops it being orderable.
+ */
+export function buildDrinkOrder(db: Database.Database, items: unknown): DrinkOrderResult {
+	if (!Array.isArray(items) || items.length === 0) return { ok: false, reason: 'bad_items' };
+
+	const lineItems: DrinkLineItem[] = [];
+	let drinkCount = 0;
+
+	for (const raw of items) {
+		if (!raw || typeof raw !== 'object') return { ok: false, reason: 'bad_items' };
+		const { productId, quantity } = raw as Partial<DrinkOrderItem>;
+		if (!Number.isInteger(productId) || (productId as number) <= 0) {
+			return { ok: false, reason: 'bad_items' };
+		}
+		if (!Number.isInteger(quantity) || (quantity as number) <= 0) {
+			return { ok: false, reason: 'bad_drink_count' };
+		}
+
+		const product = db
+			.prepare(
+				'SELECT id, name, price_cents FROM products WHERE id = ? AND category = ? AND active = 1'
+			)
+			.get(productId, DRINK_CATEGORY) as
+			| { id: number; name: string; price_cents: number }
+			| undefined;
+		if (!product) return { ok: false, reason: 'not_a_drink' };
+
+		lineItems.push({
+			productId: product.id,
+			name: product.name,
+			price_cents: product.price_cents,
+			quantity: quantity as number
+		});
+		drinkCount += quantity as number;
+	}
+
+	if (drinkCount <= 0 || drinkCount > MAX_DRINKS_PER_ORDER) {
+		return { ok: false, reason: 'bad_drink_count' };
+	}
+
+	const totalCents = lineItems.reduce((sum, i) => sum + i.price_cents * i.quantity, 0);
+	return { ok: true, lineItems, drinkCount, totalCents };
+}
+
+/** Attach the Stripe session to a hold created before the session existed. */
+export function attachSessionToReservation(
+	db: Database.Database,
+	reservationId: number,
+	sessionId: string
+): void {
+	db.prepare('UPDATE reservations SET stripe_session_id = ? WHERE id = ?').run(
+		sessionId,
+		reservationId
+	);
+}
+
+/** Drop a hold outright. Used when session creation fails after the hold. */
+export function abandonHold(db: Database.Database, reservationId: number): void {
+	db.prepare(
+		"UPDATE reservations SET status = 'cancelled' WHERE id = ? AND status = 'pending'"
+	).run(reservationId);
+}
+
+/** Full reservation row, for the confirmation emails. */
+export function getReservationBySession(db: Database.Database, sessionId: string) {
+	if (!sessionId) return null;
+	return (
+		(db
+			.prepare('SELECT * FROM reservations WHERE stripe_session_id = ? ORDER BY id DESC LIMIT 1')
+			.get(sessionId) as Record<string, unknown> | undefined) ?? null
+	);
+}
+
 export interface HoldParams {
 	date: string;
 	timeSlot: string;
@@ -394,45 +503,67 @@ export function releaseCapacity(db: Database.Database, sessionId: string): numbe
 	return result.changes;
 }
 
+/** What confirming a paid session actually did. */
+export type ConfirmOutcome = 'confirmed' | 'already_confirmed' | 'revived' | 'not_found';
+
+export interface ConfirmResult {
+	outcome: ConfirmOutcome;
+	row?: {
+		id: number;
+		customer_email: string;
+		reservation_date: string;
+		time_slot: string;
+	};
+}
+
 /**
- * Promote a paid reservation to `confirmed`. Returns the row, or null when there
- * is nothing to confirm — an unknown session, or one already confirmed, so a
- * duplicate webhook delivery does not send a second confirmation email.
+ * Promote a paid reservation to `confirmed`.
+ *
+ * The three non-happy cases are reported separately because they mean very
+ * different things and an earlier version conflated them all as "null":
+ *
+ * - `already_confirmed` — a duplicate webhook delivery. Do NOT email again.
+ * - `revived` — the row had been cancelled or expired, yet Stripe says it was
+ *   PAID. Money has been taken, so the reservation is honoured anyway and the
+ *   caller must shout about it: capacity may now be over-committed.
+ * - `not_found` — no reservation for that session; not a drink order.
  */
-export function confirmReservation(
-	db: Database.Database,
-	sessionId: string
-): { id: number; customer_email: string; reservation_date: string; time_slot: string } | null {
-	if (!sessionId) return null;
-	const run = db.transaction(() => {
-		const result = db
-			.prepare(
-				`UPDATE reservations SET status = 'confirmed'
-				 WHERE stripe_session_id = ? AND status = 'pending'`
-			)
-			.run(sessionId);
-		if (result.changes === 0) return null;
-		if (result.changes > 1) {
-			// Two rows should never share a Stripe session id. If they ever do,
-			// fail loudly rather than email one customer another's pickup time.
-			throw new Error(
-				`confirmReservation: ${result.changes} reservations share session ${sessionId}`
+export function confirmReservation(db: Database.Database, sessionId: string): ConfirmResult {
+	if (!sessionId) return { outcome: 'not_found' };
+
+	const run = db.transaction((): ConfirmResult => {
+		const rows = db
+			.prepare('SELECT id, status FROM reservations WHERE stripe_session_id = ? ORDER BY id DESC')
+			.all(sessionId) as { id: number; status: string }[];
+		if (rows.length === 0) return { outcome: 'not_found' };
+		if (rows.length > 1) {
+			// Two rows must never share a Stripe session id. Confirm the newest
+			// deterministically rather than throw: throwing would 500 the webhook and
+			// Stripe would retry forever. But make the anomaly loud.
+			console.error(
+				`confirmReservation: ${rows.length} reservations share session ${sessionId}; confirming id ${rows[0].id}`
 			);
 		}
-		return db
+		const existing = rows[0];
+		if (existing.status === 'confirmed') return { outcome: 'already_confirmed' };
+
+		const wasReleased = (CANCELLED_STATUSES as readonly string[]).includes(existing.status);
+
+		const result = db
+			.prepare("UPDATE reservations SET status = 'confirmed' WHERE id = ?")
+			.run(existing.id);
+		if (result.changes !== 1) return { outcome: 'not_found' };
+
+		const row = db
 			.prepare(
 				`SELECT id, customer_email, reservation_date, time_slot
-				 FROM reservations
-				 WHERE stripe_session_id = ? AND status = 'confirmed'
-				 ORDER BY id DESC LIMIT 1`
+				 FROM reservations WHERE id = ?`
 			)
-			.get(sessionId) as {
-			id: number;
-			customer_email: string;
-			reservation_date: string;
-			time_slot: string;
-		};
+			.get(existing.id) as ConfirmResult['row'];
+
+		return { outcome: wasReleased ? 'revived' : 'confirmed', row };
 	});
+
 	return run.immediate();
 }
 
@@ -442,7 +573,7 @@ export function drinksEnabled(db: Database.Database): boolean {
 }
 
 /** Customer-facing message for a refusal. Never leaks internals. */
-export function refusalMessage(reason: HoldReason | OrderableReason | undefined): string {
+export function refusalMessage(reason: RefusalReason | undefined): string {
 	switch (reason) {
 		case 'closed_day':
 			return 'We are not making drinks that day.';
@@ -458,6 +589,10 @@ export function refusalMessage(reason: HoldReason | OrderableReason | undefined)
 		case 'no_such_slot':
 			return 'That pickup time is not available.';
 		case 'bad_drink_count':
+			return `Please choose at least one drink, and no more than ${MAX_DRINKS_PER_ORDER}.`;
+		case 'not_a_drink':
+			return 'One of those items is not available to reserve.';
+		case 'bad_items':
 			return 'Please choose at least one drink.';
 		default:
 			return 'We could not reserve that. Please try again.';
