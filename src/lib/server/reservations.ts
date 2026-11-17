@@ -68,6 +68,13 @@ function parseCalendarDate(dateStr: string): { y: number; m: number; d: number; 
 	return { y, m, d, utc };
 }
 
+/**
+ * How old an unpaid hold must be before the sweeper releases it. Stripe expires
+ * a reservation session at 30 minutes, so 45 leaves room for the webhook to
+ * arrive and do it properly first.
+ */
+export const DEFAULT_STALE_HOLD_MINUTES = 45;
+
 /** Upper bound on one order, so a typo or a bot cannot ask for 10,000 lattes. */
 export const MAX_DRINKS_PER_ORDER = 50;
 
@@ -521,6 +528,61 @@ export interface ConfirmResult {
 		reservation_date: string;
 		time_slot: string;
 	};
+}
+
+/**
+ * Release unpaid holds that have gone stale.
+ *
+ * Capacity is taken BEFORE payment, so an abandoned checkout parks a scarce
+ * drink until something gives it back. Today the only backstop is Stripe's
+ * `checkout.session.expired` webhook, and that leaves two gaps: a hold created
+ * when session creation failed after the hold (no session will ever expire),
+ * and any delivery Stripe never manages to make.
+ *
+ * Ages are compared in UTC on both sides — `created_at` is SQLite's
+ * CURRENT_TIMESTAMP, which is UTC — so there is no timezone question here.
+ *
+ * Only `pending` rows are touched, so this can never cancel something paid for.
+ */
+export function sweepStaleHolds(db: Database.Database, olderThanMinutes: number): number {
+	const minutes =
+		Number.isInteger(olderThanMinutes) && olderThanMinutes > 0
+			? olderThanMinutes
+			: DEFAULT_STALE_HOLD_MINUTES;
+	const cutoff = `-${minutes} minutes`;
+
+	const run = db.transaction((): number => {
+		const stale = db
+			.prepare(
+				`SELECT id, order_id FROM reservations
+				  WHERE status = 'pending' AND created_at < datetime('now', ?)`
+			)
+			.all(cutoff) as { id: number; order_id: number | null }[];
+		if (stale.length === 0) return 0;
+
+		const expireReservation = db.prepare(
+			"UPDATE reservations SET status = 'expired' WHERE id = ? AND status = 'pending'"
+		);
+		// The webhook's expiry path settles the order too. A swept hold must not
+		// leave an orders row stuck at 'pending' forever — visible in the admin
+		// and counted by anything reading pending orders. This is the COMMON case
+		// for the sweeper, not a rare one: it exists precisely for holds whose
+		// Stripe session never came into being, so no webhook will ever arrive.
+		const expireOrder = db.prepare(
+			"UPDATE orders SET status = 'expired' WHERE id = ? AND status = 'pending'"
+		);
+
+		let released = 0;
+		for (const row of stale) {
+			if (expireReservation.run(row.id).changes === 1) {
+				released++;
+				if (row.order_id) expireOrder.run(row.order_id);
+			}
+		}
+		return released;
+	});
+
+	return run.immediate();
 }
 
 /**
