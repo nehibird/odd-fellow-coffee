@@ -5,6 +5,10 @@ export const stripe = new Stripe(STRIPE_SECRET_KEY, {
 	apiVersion: '2024-12-18.acacia'
 });
 
+/** Stripe requires a session expiry between 30 minutes and 24 hours out. */
+const STRIPE_MIN_EXPIRY_MINUTES = 30;
+const STRIPE_MAX_EXPIRY_MINUTES = 24 * 60;
+
 interface LineItem {
 	name: string;
 	price_cents: number;
@@ -20,7 +24,12 @@ export async function createCheckoutSession(
 	items: LineItem[],
 	customerEmail: string | undefined,
 	returnUrl: string,
-	opts?: { collectShipping?: boolean; localOnly?: boolean; shippingZip?: string }
+	opts?: {
+		collectShipping?: boolean;
+		localOnly?: boolean;
+		shippingZip?: string;
+		expiresInMinutes?: number;
+	}
 ) {
 	const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item) => ({
 		price_data: {
@@ -46,6 +55,19 @@ export async function createCheckoutSession(
 		sessionParams.customer_email = customerEmail;
 	}
 
+	// A short expiry matters for drink reservations: the hold is taken BEFORE
+	// payment, so an abandoned checkout keeps a scarce slot occupied until Stripe
+	// expires the session and the webhook releases it. Stripe's default is 24
+	// hours, which would let anyone sell out a day for free; 30 minutes is the
+	// Stripe minimum and caps that window.
+	if (opts?.expiresInMinutes) {
+		const minutes = Math.max(
+			STRIPE_MIN_EXPIRY_MINUTES,
+			Math.min(STRIPE_MAX_EXPIRY_MINUTES, Math.floor(opts.expiresInMinutes))
+		);
+		sessionParams.expires_at = Math.floor(Date.now() / 1000) + minutes * 60;
+	}
+
 	if (opts?.collectShipping) {
 		sessionParams.shipping_address_collection = { allowed_countries: ['US'] };
 		// Shipping rates are resolved UP FRONT from the ZIP collected on the cart page.
@@ -68,7 +90,9 @@ const FREQUENCY_MAP: Record<string, { interval: 'week' | 'month'; interval_count
 
 export const LOCAL_ZIP = '74653';
 
-export function getShippingOptions(zip: string): Stripe.Checkout.SessionCreateParams.ShippingOption[] {
+export function getShippingOptions(
+	zip: string
+): Stripe.Checkout.SessionCreateParams.ShippingOption[] {
 	if (zip === LOCAL_ZIP) {
 		return [
 			{
@@ -125,15 +149,26 @@ export async function createSubscriptionCheckout(
 	cancelUrl: string,
 	variant?: string,
 	shippingCents?: number,
-	shippingAddress?: { name: string; line1: string; line2?: string; city: string; state: string; zip: string }
+	shippingAddress?: {
+		name: string;
+		line1: string;
+		line2?: string;
+		city: string;
+		state: string;
+		zip: string;
+	}
 ) {
 	const recurring = FREQUENCY_MAP[frequency];
 	if (!recurring) throw new Error(`Invalid frequency: ${frequency}`);
 
-	const frequencyLabel = frequency === 'twice_weekly' ? 'Twice Weekly (Mon & Fri)'
-		: frequency === 'weekly' ? 'Weekly'
-		: frequency === 'biweekly' ? 'Every 2 Weeks'
-		: 'Monthly';
+	const frequencyLabel =
+		frequency === 'twice_weekly'
+			? 'Twice Weekly (Mon & Fri)'
+			: frequency === 'weekly'
+				? 'Weekly'
+				: frequency === 'biweekly'
+					? 'Every 2 Weeks'
+					: 'Monthly';
 	const subQuantity = frequency === 'twice_weekly' ? 2 : 1;
 
 	const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
@@ -174,17 +209,19 @@ export async function createSubscriptionCheckout(
 			variant: variant || '',
 			price_cents: String(priceCents),
 			shipping_cents: String(shippingCents || 0),
-			...(shippingAddress ? {
-				shipping_name: shippingAddress.name,
-				shipping_address: JSON.stringify({
-					line1: shippingAddress.line1,
-					line2: shippingAddress.line2 || '',
-					city: shippingAddress.city,
-					state: shippingAddress.state,
-					postal_code: shippingAddress.zip,
-					country: 'US'
-				})
-			} : {})
+			...(shippingAddress
+				? {
+						shipping_name: shippingAddress.name,
+						shipping_address: JSON.stringify({
+							line1: shippingAddress.line1,
+							line2: shippingAddress.line2 || '',
+							city: shippingAddress.city,
+							state: shippingAddress.state,
+							postal_code: shippingAddress.zip,
+							country: 'US'
+						})
+					}
+				: {})
 		}
 	});
 }

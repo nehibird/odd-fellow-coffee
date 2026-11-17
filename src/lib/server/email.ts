@@ -115,18 +115,28 @@ interface OrderData {
 	totalCents: number;
 	shippingMethod?: string;
 	shippingCents?: number;
-	shippingAddress?: { line1: string; line2?: string; city: string; state: string; postal_code: string };
+	shippingAddress?: {
+		line1: string;
+		line2?: string;
+		city: string;
+		state: string;
+		postal_code: string;
+	};
 }
 
 function receiptTable(order: OrderData): string {
-	const itemRows = order.items.map(item => `
+	const itemRows = order.items
+		.map(
+			(item) => `
 <tr>
 <td style="padding:10px 0;border-bottom:1px solid ${BRAND.border};font-size:14px;">
 ${esc(item.name || `Product #${item.productId}`)}${item.variant ? `<br><span style="color:${BRAND.textMuted};font-size:12px;">${esc(item.variant)}</span>` : ''}
 </td>
 <td align="center" style="padding:10px 0;border-bottom:1px solid ${BRAND.border};font-size:14px;color:${BRAND.textMuted};">${item.quantity}</td>
 <td align="right" style="padding:10px 0;border-bottom:1px solid ${BRAND.border};font-size:14px;">$${(item.price_cents / 100).toFixed(2)}</td>
-</tr>`).join('');
+</tr>`
+		)
+		.join('');
 
 	const subtotalCents = order.items.reduce((sum, i) => sum + i.price_cents * i.quantity, 0);
 	const shippingCents = order.shippingCents || 0;
@@ -210,11 +220,7 @@ function estimatedArrivalBlock(shippingMethod?: string): string {
 
 // ─── Email Functions ────────────────────────────────────────────
 
-export async function sendOrderConfirmation(
-	email: string,
-	name: string,
-	order: OrderData
-) {
+export async function sendOrderConfirmation(email: string, name: string, order: OrderData) {
 	const html = emailShell(`
 <p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Order Confirmed</p>
 <h1 style="margin:0 0 8px;font-size:28px;color:${BRAND.dark};">Thanks, ${esc(name)}!</h1>
@@ -247,34 +253,122 @@ ${btn(BRAND.siteUrl + '/shop', 'Continue Shopping')}
 	});
 }
 
+export interface ReservationEmailData {
+	date: string;
+	timeSlot: string;
+	drinks: { name: string; quantity: number }[];
+	totalCents: number;
+	pickupLocation?: string | null;
+}
+
+/** Human pickup window: "14:45-15:15" -> "2:45 - 3:15 PM". */
+function prettyWindow(timeSlot: string): string {
+	if (!timeSlot || !timeSlot.trim()) return 'your pickup window';
+	const parts = timeSlot.split('-');
+	if (parts.length !== 2) return timeSlot;
+	const to12 = (hhmm: string): { text: string; suffix: string } | null => {
+		const [h, m] = hhmm.split(':').map(Number);
+		if (!Number.isInteger(h) || !Number.isInteger(m)) return null;
+		const suffix = h >= 12 ? 'PM' : 'AM';
+		const hour = h % 12 === 0 ? 12 : h % 12;
+		return { text: hour + ':' + String(m).padStart(2, '0'), suffix };
+	};
+	const a = to12(parts[0]);
+	const b = to12(parts[1]);
+	if (!a || !b) return timeSlot;
+	return a.suffix === b.suffix
+		? a.text + ' - ' + b.text + ' ' + b.suffix
+		: a.text + ' ' + a.suffix + ' - ' + b.text + ' ' + b.suffix;
+}
+
+/** Friendly date: "2026-11-20" -> "Friday, November 20". */
+function prettyDate(date: string): string {
+	// Fail to a readable phrase, never an empty string: the subject line
+	// "Order confirmed for  - Odd Fellow Coffee" is worse than being vague.
+	if (!date || !date.trim()) return 'your pickup day';
+	const [y, m, d] = date.split('-').map(Number);
+	if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d)) {
+		return 'your pickup day';
+	}
+	const dt = new Date(Date.UTC(y, m - 1, d));
+	if (Number.isNaN(dt.getTime())) return 'your pickup day';
+	return dt.toLocaleDateString('en-US', {
+		weekday: 'long',
+		month: 'long',
+		day: 'numeric',
+		timeZone: 'UTC'
+	});
+}
+
+function drinkRows(drinks: { name: string; quantity: number }[]): string {
+	return drinks
+		.map(
+			(d) =>
+				'<tr><td style="padding:6px 0;font-size:15px;color:' +
+				BRAND.dark +
+				';">' +
+				esc(d.name) +
+				'</td><td style="padding:6px 0;font-size:15px;text-align:right;color:' +
+				BRAND.dark +
+				';">&times;' +
+				d.quantity +
+				'</td></tr>'
+		)
+		.join('');
+}
+
 export async function sendReservationConfirmation(
 	email: string,
 	name: string,
-	date: string,
-	timeSlot: string
+	details: ReservationEmailData
 ) {
+	const when = prettyDate(details.date);
+	const pickupWindow = prettyWindow(details.timeSlot);
+	const locationBlock = details.pickupLocation
+		? '<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:' +
+			BRAND.textMuted +
+			';">Pickup</p><p style="margin:0 0 20px;font-size:16px;color:' +
+			BRAND.dark +
+			';">' +
+			esc(details.pickupLocation) +
+			'</p>'
+		: '<p style="margin:0 0 20px;font-size:14px;color:' +
+			BRAND.textMuted +
+			';">We will confirm the pickup spot by email before your order is ready.</p>';
+
 	const html = emailShell(`
-<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Reservation Confirmed</p>
-<h1 style="margin:0 0 24px;font-size:28px;color:${BRAND.dark};">See you there, ${esc(name)}!</h1>
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Order Confirmed</p>
+<h1 style="margin:0 0 24px;font-size:28px;color:${BRAND.dark};">Thanks, ${esc(name || 'friend')}!</h1>
 
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background-color:${BRAND.lightBg};border-radius:8px;width:100%;">
 <tr><td style="padding:20px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 <tr>
-<td width="50%">
-<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Date</p>
-<p style="margin:0;font-size:18px;font-weight:700;color:${BRAND.dark};">${esc(date)}</p>
+<td width="50%" valign="top">
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Day</p>
+<p style="margin:0;font-size:18px;font-weight:700;color:${BRAND.dark};">${esc(when)}</p>
 </td>
-<td width="50%">
-<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Time</p>
-<p style="margin:0;font-size:18px;font-weight:700;color:${BRAND.dark};">${esc(timeSlot)}</p>
+<td width="50%" valign="top">
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Ready</p>
+<p style="margin:0;font-size:18px;font-weight:700;color:${BRAND.dark};">${esc(pickupWindow)}</p>
 </td>
 </tr>
 </table>
 </td></tr>
 </table>
 
-<p style="font-size:14px;color:${BRAND.textMuted};line-height:1.6;">We'll have a spot waiting for you. If you need to change or cancel your reservation, just reply to this email.</p>
+${locationBlock}
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
+${drinkRows(details.drinks)}
+<tr><td colspan="2" style="border-top:1px solid ${BRAND.border};padding-top:10px;"></td></tr>
+<tr>
+<td style="font-size:16px;font-weight:700;color:${BRAND.dark};">Total paid</td>
+<td style="font-size:16px;font-weight:700;text-align:right;color:${BRAND.dark};">$${(details.totalCents / 100).toFixed(2)}</td>
+</tr>
+</table>
+
+<p style="font-size:14px;color:${BRAND.textMuted};line-height:1.6;">Made fresh for your pickup window. If you need to change or cancel, just reply to this email.</p>
 
 ${divider()}
 
@@ -287,7 +381,60 @@ ${btn(BRAND.siteUrl, 'Visit Our Site')}
 		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
 		replyTo: REPLY_TO,
 		to: email,
-		subject: `Reservation Confirmed for ${date} - Odd Fellow Coffee`,
+		subject: `Order confirmed for ${when} - Odd Fellow Coffee`,
+		html
+	});
+}
+
+/** Deborah needs to know the moment a drink sells, so she can plan the batch. */
+export async function sendOwnerReservationNotification(
+	ownerEmail: string,
+	customerName: string,
+	customerEmail: string,
+	details: ReservationEmailData,
+	revived = false
+) {
+	const when = prettyDate(details.date);
+	const pickupWindow = prettyWindow(details.timeSlot);
+	const totalDrinks = details.drinks.reduce((sum, d) => sum + d.quantity, 0);
+	// A revived reservation was paid after its hold was released, so the slot may
+	// now be over its planned capacity. Deborah must see that at a glance.
+	const warning = revived
+		? '<p style="margin:0 0 20px;padding:12px;border-radius:6px;background-color:#fdecea;font-size:14px;color:#8a1c13;"><strong>Heads up:</strong> this order was paid after its hold had expired, so this slot may be over its planned capacity. Check the run sheet before you brew.</p>'
+		: '';
+	const plural = totalDrinks === 1 ? '' : 's';
+
+	const html = emailShell(`
+${warning}
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">New Drink Order</p>
+<h1 style="margin:0 0 24px;font-size:28px;color:${BRAND.dark};">${totalDrinks} drink${plural} for ${esc(when)}</h1>
+
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background-color:${BRAND.lightBg};border-radius:8px;width:100%;">
+<tr><td style="padding:20px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+${drinkRows(details.drinks)}
+</table>
+<p style="margin:16px 0 0;font-size:14px;color:${BRAND.textMuted};">Pickup window <strong style="color:${BRAND.dark};">${esc(pickupWindow)}</strong></p>
+</td></tr>
+</table>
+
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Customer</p>
+<p style="margin:0 0 20px;font-size:15px;color:${BRAND.dark};">${esc(customerName || 'No name given')}<br>${esc(customerEmail || 'No email given')}</p>
+
+<p style="margin:0;font-size:16px;font-weight:700;color:${BRAND.dark};">Paid $${(details.totalCents / 100).toFixed(2)}</p>
+
+${divider()}
+
+<p style="text-align:center;margin:0;">
+${btn(BRAND.siteUrl + '/admin/drinks', 'Run Sheet')}
+</p>
+`);
+
+	await transporter.sendMail({
+		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
+		to: ownerEmail,
+		subject: `${revived ? '[OVER CAPACITY] ' : ''}New: ${totalDrinks} drink${plural} for ${when} (${pickupWindow})`,
 		html
 	});
 }
@@ -302,7 +449,8 @@ export async function sendSubscriptionConfirmation(
 	nextDeliveryDate: string
 ) {
 	const variantText = variant ? ` (${esc(variant)})` : '';
-	const freqLabel = frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Every 2 Weeks' : 'Monthly';
+	const freqLabel =
+		frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Every 2 Weeks' : 'Monthly';
 	const freqShort = frequency === 'weekly' ? '/wk' : frequency === 'biweekly' ? '/2wk' : '/mo';
 	const totalCents = priceCents + shippingCents;
 
@@ -410,18 +558,27 @@ export async function sendOwnerSubscriptionNotification(
 	frequency: string,
 	priceCents: number,
 	shippingName: string | null,
-	shippingAddress: { line1: string; line2?: string; city: string; state: string; postal_code: string } | null,
+	shippingAddress: {
+		line1: string;
+		line2?: string;
+		city: string;
+		state: string;
+		postal_code: string;
+	} | null,
 	nextDeliveryDate: string
 ) {
 	const variantText = variant ? ` (${esc(variant)})` : '';
-	const freqLabel = frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Every 2 Weeks' : 'Monthly';
+	const freqLabel =
+		frequency === 'weekly' ? 'Weekly' : frequency === 'biweekly' ? 'Every 2 Weeks' : 'Monthly';
 
 	const addrBlock = shippingAddress
 		? `<p style="margin:8px 0 0;font-size:14px;line-height:1.6;">
 ${esc(shippingAddress.line1)}${shippingAddress.line2 ? '<br>' + esc(shippingAddress.line2) : ''}<br>
 ${esc(shippingAddress.city)}, ${esc(shippingAddress.state)} ${esc(shippingAddress.postal_code)}
 </p>`
-		: '<p style="margin:8px 0 0;font-size:14px;color:' + BRAND.textMuted + ';">No address provided</p>';
+		: '<p style="margin:8px 0 0;font-size:14px;color:' +
+			BRAND.textMuted +
+			';">No address provided</p>';
 
 	const html = emailShell(`
 <p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">New Subscription</p>
@@ -480,7 +637,13 @@ export async function sendDeliveryDayReminder(
 	productName: string,
 	variant: string | null,
 	shippingMethod: string | null,
-	shippingAddress: { line1: string; line2?: string; city: string; state: string; postal_code: string } | null
+	shippingAddress: {
+		line1: string;
+		line2?: string;
+		city: string;
+		state: string;
+		postal_code: string;
+	} | null
 ) {
 	const variantText = variant ? ` (${esc(variant)})` : '';
 	const isLocal = !shippingAddress || shippingAddress.postal_code === '74653';
@@ -509,7 +672,9 @@ ${deliveryInfo}
 </td></tr>
 </table>
 
-${shippingAddress ? `
+${
+	shippingAddress
+		? `
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;background-color:${BRAND.lightBg};border-radius:8px;width:100%;">
 <tr><td style="padding:16px;">
 <p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Delivering To</p>
@@ -518,7 +683,9 @@ ${esc(shippingAddress.line1)}${shippingAddress.line2 ? '<br>' + esc(shippingAddr
 ${esc(shippingAddress.city)}, ${esc(shippingAddress.state)} ${esc(shippingAddress.postal_code)}
 </p>
 </td></tr>
-</table>` : ''}
+</table>`
+		: ''
+}
 
 ${divider()}
 
@@ -548,7 +715,13 @@ interface DeliveryDigestItem {
 	productName: string;
 	variant: string | null;
 	frequency: string;
-	shippingAddress: { line1: string; line2?: string; city: string; state: string; postal_code: string } | null;
+	shippingAddress: {
+		line1: string;
+		line2?: string;
+		city: string;
+		state: string;
+		postal_code: string;
+	} | null;
 }
 
 export async function sendOwnerDailyDigest(
@@ -558,12 +731,13 @@ export async function sendOwnerDailyDigest(
 ) {
 	if (deliveries.length === 0) return;
 
-	const rows = deliveries.map((d, i) => {
-		const addr = d.shippingAddress
-			? `${esc(d.shippingAddress.line1)}, ${esc(d.shippingAddress.city)}, ${esc(d.shippingAddress.state)} ${esc(d.shippingAddress.postal_code)}`
-			: 'No address';
-		const variantText = d.variant ? ` (${esc(d.variant)})` : '';
-		return `
+	const rows = deliveries
+		.map((d, i) => {
+			const addr = d.shippingAddress
+				? `${esc(d.shippingAddress.line1)}, ${esc(d.shippingAddress.city)}, ${esc(d.shippingAddress.state)} ${esc(d.shippingAddress.postal_code)}`
+				: 'No address';
+			const variantText = d.variant ? ` (${esc(d.variant)})` : '';
+			return `
 <tr style="${i % 2 === 1 ? 'background-color:' + BRAND.lightBg + ';' : ''}">
 <td style="padding:10px 12px;border-bottom:1px solid ${BRAND.border};font-size:14px;">
 <strong>${esc(d.shippingName || d.customerEmail)}</strong><br>
@@ -572,7 +746,8 @@ export async function sendOwnerDailyDigest(
 <td style="padding:10px 12px;border-bottom:1px solid ${BRAND.border};font-size:14px;">${esc(d.productName)}${variantText}</td>
 <td style="padding:10px 12px;border-bottom:1px solid ${BRAND.border};font-size:13px;color:${BRAND.textMuted};">${esc(addr)}</td>
 </tr>`;
-	}).join('');
+		})
+		.join('');
 
 	const html = emailShell(`
 <p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Daily Delivery Digest</p>
@@ -652,7 +827,9 @@ ${esc(order.shippingAddress.city)}, ${esc(order.shippingAddress.state)} ${esc(or
 
 ${receiptTable(order)}
 
-${order.shippingMethod ? `
+${
+	order.shippingMethod
+		? `
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;background-color:${BRAND.lightBg};border-radius:8px;width:100%;">
 <tr><td style="padding:16px;">
 <p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Fulfillment</p>
@@ -660,7 +837,9 @@ ${order.shippingMethod ? `
 ${customerName ? `<p style="margin:4px 0 0;font-size:14px;color:${BRAND.textMuted};">${esc(customerName)}</p>` : ''}
 ${addrBlock}
 </td></tr>
-</table>` : ''}
+</table>`
+		: ''
+}
 `);
 
 	await transporter.sendMail({

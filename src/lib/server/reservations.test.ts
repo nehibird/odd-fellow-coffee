@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { applySchema, setSettingOn, DRINK_SLOT_TYPE, DRINKS_DEFAULT_CUTOFF_HOUR } from './db';
-import type { HoldReason } from './reservations';
+import type { RefusalReason } from './reservations';
 import {
 	chicagoOffsetMinutes,
 	todayInChicago,
@@ -16,6 +16,10 @@ import {
 	getSlotAvailability,
 	holdCapacity,
 	releaseCapacity,
+	buildDrinkOrder,
+	attachSessionToReservation,
+	abandonHold,
+	getReservationBySession,
 	confirmReservation,
 	drinksEnabled,
 	refusalMessage,
@@ -507,55 +511,96 @@ describe('confirmReservation', () => {
 	const base = { date: FRI_CST, timeSlot: SLOT, email: 'a@b.com', name: 'A', totalCents: 1000 };
 
 	beforeEach(() => {
-		seedDrinkSlots(db, 4);
+		seedDrinkSlots(db, 8);
 	});
 
-	it('promotes a pending reservation and returns it', () => {
+	it('promotes a pending reservation and reports "confirmed"', () => {
 		holdCapacity(db, { ...base, drinkCount: 2, sessionId: 'cs_ok' });
-		const row = confirmReservation(db, 'cs_ok');
-		expect(row).toMatchObject({
+		const res = confirmReservation(db, 'cs_ok');
+		expect(res.outcome).toBe('confirmed');
+		expect(res.row).toMatchObject({
 			customer_email: 'a@b.com',
 			reservation_date: FRI_CST,
 			time_slot: SLOT
 		});
-		const status = db
-			.prepare('SELECT status FROM reservations WHERE stripe_session_id = ?')
-			.get('cs_ok') as { status: string };
-		expect(status.status).toBe('confirmed');
+		expect(
+			(
+				db.prepare('SELECT status FROM reservations WHERE stripe_session_id = ?').get('cs_ok') as {
+					status: string;
+				}
+			).status
+		).toBe('confirmed');
 	});
 
-	it('returns null on a duplicate webhook delivery, so no second email is sent', () => {
+	it('reports "already_confirmed" on a duplicate delivery so no second email is sent', () => {
 		holdCapacity(db, { ...base, drinkCount: 2, sessionId: 'cs_dup' });
-		expect(confirmReservation(db, 'cs_dup')).not.toBeNull();
-		expect(confirmReservation(db, 'cs_dup')).toBeNull();
+		expect(confirmReservation(db, 'cs_dup').outcome).toBe('confirmed');
+		expect(confirmReservation(db, 'cs_dup').outcome).toBe('already_confirmed');
+		expect(confirmReservation(db, 'cs_dup').outcome).toBe('already_confirmed');
 	});
 
-	it('returns null for an unknown session', () => {
-		expect(confirmReservation(db, 'cs_unknown')).toBeNull();
+	it('reports "not_found" for an unknown session', () => {
+		expect(confirmReservation(db, 'cs_unknown').outcome).toBe('not_found');
 	});
 
-	it('returns null for an empty session id', () => {
-		expect(confirmReservation(db, '')).toBeNull();
+	it('reports "not_found" for an empty session id', () => {
+		expect(confirmReservation(db, '').outcome).toBe('not_found');
 	});
 
-	it('throws rather than email the wrong pickup time when two rows share a session', () => {
-		// Two pending rows on one Stripe session id should be impossible. If it
-		// ever happens, confirming them must not quietly pick one at random and
-		// send that customer the other's pickup time.
+	it.each(CANCELLED_STATUSES)(
+		'REVIVES a %s reservation that turns out to have been paid',
+		(status) => {
+			// The money is taken, so the reservation must be honoured even though its
+			// hold had been released — and the caller must be told it was revived so
+			// it can warn that the slot may now be over capacity.
+			seedReservation(db, FRI_CST, 2, status, 'cs_revive');
+			const res = confirmReservation(db, 'cs_revive');
+			expect(res.outcome).toBe('revived');
+			expect(res.row).toMatchObject({ reservation_date: FRI_CST, time_slot: SLOT });
+			expect(
+				(
+					db
+						.prepare('SELECT status FROM reservations WHERE stripe_session_id = ?')
+						.get('cs_revive') as { status: string }
+				).status
+			).toBe('confirmed');
+		}
+	);
+
+	it('a revived reservation holds capacity again', () => {
+		seedReservation(db, FRI_CST, 8, 'expired', 'cs_revive2');
+		expect(getSlotAvailability(db, FRI_CST)[0].available_drinks).toBe(8);
+		confirmReservation(db, 'cs_revive2');
+		expect(getSlotAvailability(db, FRI_CST)[0].sold_out).toBe(true);
+	});
+
+	it('confirms the newest row deterministically when two share a session, without throwing', () => {
 		seedReservation(db, FRI_CST, 1, 'pending', 'cs_dupe_rows');
 		seedReservation(db, FRI_CST, 1, 'pending', 'cs_dupe_rows');
-		expect(() => confirmReservation(db, 'cs_dupe_rows')).toThrow(/share session/);
-	});
-
-	it('will not resurrect an expired reservation', () => {
-		seedReservation(db, FRI_CST, 2, 'expired', 'cs_expired');
-		expect(confirmReservation(db, 'cs_expired')).toBeNull();
+		const newest = (
+			db
+				.prepare('SELECT MAX(id) AS id FROM reservations WHERE stripe_session_id = ?')
+				.get('cs_dupe_rows') as { id: number }
+		).id;
+		const res = confirmReservation(db, 'cs_dupe_rows');
+		expect(res.outcome).toBe('confirmed');
+		expect(res.row?.id).toBe(newest);
+		// Throwing here would 500 the webhook and Stripe would retry forever.
+		expect(
+			(
+				db
+					.prepare(
+						"SELECT COUNT(*) AS c FROM reservations WHERE stripe_session_id = ? AND status = 'confirmed'"
+					)
+					.get('cs_dupe_rows') as { c: number }
+			).c
+		).toBe(1);
 	});
 
 	it('still holds capacity after confirmation', () => {
 		holdCapacity(db, { ...base, drinkCount: 3, sessionId: 'cs_hold' });
 		confirmReservation(db, 'cs_hold');
-		expect(getSlotAvailability(db, FRI_CST)[0].available_drinks).toBe(1);
+		expect(getSlotAvailability(db, FRI_CST)[0].available_drinks).toBe(5);
 	});
 });
 
@@ -572,7 +617,9 @@ describe('drinksEnabled', () => {
 });
 
 describe('refusalMessage', () => {
-	const reasons: HoldReason[] = [
+	const reasons: RefusalReason[] = [
+		'bad_items',
+		'not_a_drink',
 		'closed_day',
 		'cutoff_passed',
 		'date_past',
@@ -614,5 +661,149 @@ describe('settings robustness', () => {
 		const slot = getSlotAvailability(db, FRI_CST).find((s) => s.label === '16:00-16:30');
 		expect(slot?.available_drinks).toBe(0);
 		expect(slot?.sold_out).toBe(true);
+	});
+});
+
+describe('buildDrinkOrder', () => {
+	let iced: number;
+	let latte: number;
+
+	beforeEach(() => {
+		db.prepare("UPDATE products SET active = 1 WHERE category = 'drinks'").run();
+		iced = (
+			db.prepare("SELECT id FROM products WHERE name = 'Iced Coffee'").get() as { id: number }
+		).id;
+		latte = (
+			db.prepare("SELECT id FROM products WHERE name = 'Iced Latte'").get() as { id: number }
+		).id;
+	});
+
+	it('prices from the database, ignoring anything the client sends', () => {
+		// A hostile client claims a 1-cent latte. The price must come from the row.
+		const res = buildDrinkOrder(db, [
+			{ productId: latte, quantity: 2, price_cents: 1, name: 'FREE LATTE' }
+		]);
+		expect(res.ok).toBe(true);
+		expect(res.lineItems).toEqual([
+			{ productId: latte, name: 'Iced Latte', price_cents: 600, quantity: 2 }
+		]);
+		expect(res.totalCents).toBe(1200);
+		expect(res.drinkCount).toBe(2);
+	});
+
+	it('keeps productId on the line items so orders.items matches other paths', () => {
+		const res = buildDrinkOrder(db, [{ productId: iced, quantity: 1 }]);
+		expect(res.lineItems![0].productId).toBe(iced);
+	});
+
+	it('sums a mixed order', () => {
+		const res = buildDrinkOrder(db, [
+			{ productId: iced, quantity: 3 },
+			{ productId: latte, quantity: 1 }
+		]);
+		expect(res.totalCents).toBe(3 * 500 + 600);
+		expect(res.drinkCount).toBe(4);
+	});
+
+	it('refuses a product that is not a drink', () => {
+		const coffee = db.prepare("SELECT id FROM products WHERE category = 'coffee' LIMIT 1").get() as
+			| { id: number }
+			| undefined;
+		if (coffee) {
+			expect(buildDrinkOrder(db, [{ productId: coffee.id, quantity: 1 }])).toMatchObject({
+				ok: false,
+				reason: 'not_a_drink'
+			});
+		}
+	});
+
+	it('refuses a deactivated drink', () => {
+		db.prepare('UPDATE products SET active = 0 WHERE id = ?').run(latte);
+		expect(buildDrinkOrder(db, [{ productId: latte, quantity: 1 }])).toMatchObject({
+			ok: false,
+			reason: 'not_a_drink'
+		});
+	});
+
+	it('refuses a nonexistent product', () => {
+		expect(buildDrinkOrder(db, [{ productId: 999999, quantity: 1 }])).toMatchObject({
+			ok: false,
+			reason: 'not_a_drink'
+		});
+	});
+
+	it.each([
+		[[], 'bad_items'],
+		['not an array', 'bad_items'],
+		[null, 'bad_items'],
+		[[null], 'bad_items'],
+		[['nope'], 'bad_items']
+	])('rejects malformed items %s', (items, reason) => {
+		expect(buildDrinkOrder(db, items)).toMatchObject({ ok: false, reason });
+	});
+
+	it.each([0, -1, 1.5, '2', NaN])('rejects quantity %s', (quantity) => {
+		expect(buildDrinkOrder(db, [{ productId: iced, quantity }]).ok).toBe(false);
+	});
+
+	it.each([0, -5, 1.5, 'abc', null])('rejects productId %s', (productId) => {
+		expect(buildDrinkOrder(db, [{ productId, quantity: 1 }])).toMatchObject({
+			ok: false,
+			reason: 'bad_items'
+		});
+	});
+
+	it('refuses an order over the per-order ceiling', () => {
+		expect(buildDrinkOrder(db, [{ productId: iced, quantity: 51 }])).toMatchObject({
+			ok: false,
+			reason: 'bad_drink_count'
+		});
+		// Also when spread across lines.
+		expect(
+			buildDrinkOrder(db, [
+				{ productId: iced, quantity: 30 },
+				{ productId: latte, quantity: 30 }
+			])
+		).toMatchObject({ ok: false, reason: 'bad_drink_count' });
+	});
+});
+
+describe('session attachment helpers', () => {
+	const base = { date: FRI_CST, timeSlot: SLOT, email: 'a@b.com', name: 'A', totalCents: 1000 };
+
+	beforeEach(() => {
+		seedDrinkSlots(db, 8);
+	});
+
+	it('attaches a session id after the hold, then confirms by it', () => {
+		const held = holdCapacity(db, { ...base, drinkCount: 2 });
+		expect(held.ok).toBe(true);
+		attachSessionToReservation(db, held.reservationId!, 'cs_attached');
+		expect(getReservationBySession(db, 'cs_attached')).toMatchObject({ drink_count: 2 });
+		expect(confirmReservation(db, 'cs_attached').outcome).toBe('confirmed');
+	});
+
+	it('abandonHold releases capacity when session creation fails', () => {
+		const held = holdCapacity(db, { ...base, drinkCount: 8 });
+		expect(getSlotAvailability(db, FRI_CST)[0].sold_out).toBe(true);
+		abandonHold(db, held.reservationId!);
+		expect(getSlotAvailability(db, FRI_CST)[0].available_drinks).toBe(8);
+	});
+
+	it('abandonHold will not touch an already-confirmed reservation', () => {
+		const held = holdCapacity(db, { ...base, drinkCount: 2, sessionId: 'cs_paid_already' });
+		confirmReservation(db, 'cs_paid_already');
+		abandonHold(db, held.reservationId!);
+		const row = db
+			.prepare('SELECT status FROM reservations WHERE id = ?')
+			.get(held.reservationId!) as {
+			status: string;
+		};
+		expect(row.status).toBe('confirmed');
+	});
+
+	it('getReservationBySession returns null for empty or unknown ids', () => {
+		expect(getReservationBySession(db, '')).toBeNull();
+		expect(getReservationBySession(db, 'cs_nope')).toBeNull();
 	});
 });
