@@ -50,7 +50,14 @@ export function getDb(): Database.Database {
 	return db;
 }
 
-function initSchema() {
+/**
+ * Apply the schema, migrations and seeds to a connection.
+ *
+ * Split out from initSchema() so tests can build a real, fully-migrated
+ * database on a throwaway connection instead of reaching for the singleton
+ * or duplicating the DDL.
+ */
+export function applySchema(db: Database.Database) {
 	const schemaPath = join(dirname(fileURLToPath(import.meta.url)), 'schema.sql');
 	if (existsSync(schemaPath)) {
 		db.exec(readFileSync(schemaPath, 'utf-8'));
@@ -150,17 +157,42 @@ function initSchema() {
 	);
 }
 
-export function getSetting(key: string): string | null {
-	const db = getDb();
+function initSchema() {
+	applySchema(db);
+}
+
+/** Read a setting on an explicit connection. Testable; no singleton. */
+export function getSettingOn(db: Database.Database, key: string): string | null {
 	const row = db.prepare('SELECT value FROM site_settings WHERE key = ?').get(key) as
 		| { value: string }
 		| undefined;
 	return row?.value ?? null;
 }
 
-export function setSetting(key: string, value: string): void {
-	const db = getDb();
+/** Write a setting on an explicit connection. Testable; no singleton. */
+export function setSettingOn(db: Database.Database, key: string, value: string): void {
 	db.prepare('INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)').run(key, value);
+}
+
+/**
+ * Read a setting as an integer, falling back when it is missing or not a
+ * sane non-negative integer. Operators edit these by hand, so a typo must
+ * not become a negative capacity or a NaN cutoff.
+ */
+export function getIntSettingOn(db: Database.Database, key: string, fallback: number): number {
+	const raw = getSettingOn(db, key);
+	if (raw === null || raw.trim() === '') return fallback;
+	const n = Number(raw);
+	if (!Number.isInteger(n) || n < 0) return fallback;
+	return n;
+}
+
+export function getSetting(key: string): string | null {
+	return getSettingOn(getDb(), key);
+}
+
+export function setSetting(key: string, value: string): void {
+	setSettingOn(getDb(), key, value);
 }
 
 export function getAllSettings(): Record<string, string> {
