@@ -69,7 +69,7 @@ function parseCalendarDate(dateStr: string): { y: number; m: number; d: number; 
 }
 
 /** Upper bound on one order, so a typo or a bot cannot ask for 10,000 lattes. */
-const MAX_DRINKS_PER_ORDER = 50;
+export const MAX_DRINKS_PER_ORDER = 50;
 
 export type OrderableReason =
 	| 'bad_date'
@@ -228,10 +228,17 @@ export function getDrinkSlots(db: Database.Database, dateStr: string): DrinkSlot
 	const parsed = parseCalendarDate(dateStr);
 	if (!parsed) return [];
 	const dow = parsed.utc.getUTCDay();
+	// One row per pickup WINDOW, not per table row. Nothing stops an operator
+	// creating two slots with the same start and end time, and duplicates would
+	// render the window twice AND misreport capacity: each copy would advertise
+	// its own capacity while a single hold counts against both (holds are matched
+	// by the "start-end" label, which the copies share).
 	return db
 		.prepare(
-			`SELECT id, start_time, end_time, capacity_drinks FROM time_slots
+			`SELECT MIN(id) AS id, start_time, end_time, MAX(capacity_drinks) AS capacity_drinks
+			 FROM time_slots
 			 WHERE active = 1 AND slot_type = ? AND day_of_week = ?
+			 GROUP BY start_time, end_time
 			 ORDER BY start_time`
 		)
 		.all(DRINK_SLOT_TYPE, dow) as DrinkSlot[];

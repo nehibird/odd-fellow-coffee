@@ -2,9 +2,9 @@
 	import '../../app.css';
 	import Footer from '$lib/components/Footer.svelte';
 	import Header from '$lib/components/Header.svelte';
-	let { children } = $props();
+	let { children, data } = $props();
 </script>
 
-<Header></Header>
+<Header drinksEnabled={data?.drinksEnabled ?? false}></Header>
 {@render children()}
 <Footer></Footer>
