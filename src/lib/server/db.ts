@@ -5,6 +5,35 @@ import { fileURLToPath } from 'url';
 
 const DB_PATH = process.env.DB_PATH || 'data/odd-fellow.db';
 
+/** Product category for made-to-order drinks (iced coffee, iced lattes). */
+export const DRINK_CATEGORY = 'drinks';
+
+/** `time_slots.slot_type` value marking a slot as a drink pickup window. */
+export const DRINK_SLOT_TYPE = 'drinks';
+
+/**
+ * Drinks are made the night before (cold brew needs a 12-24h steep), so ordering
+ * for day D closes at this hour on day D-1. Local time, America/Chicago.
+ */
+export const DRINKS_DEFAULT_CUTOFF_HOUR = 20;
+
+/**
+ * Drinks per day Deborah is willing to make. Deliberately low to start: at roughly
+ * 10 drinks per roasted pound this is ~1.2 lb/day, already several times current
+ * output. The roaster is the binding constraint, not demand. Admin-adjustable.
+ */
+export const DRINKS_DEFAULT_DAILY_CAP = 12;
+
+/** `site_settings` keys. Use these instead of typing the string. */
+export const SETTINGS = {
+	drinksEnabled: 'drinks_enabled',
+	drinksDailyCap: 'drinks_daily_cap',
+	drinksCutoffHour: 'drinks_cutoff_hour',
+	drinksPickupLocation: 'drinks_pickup_location',
+	drinksOrderDays: 'drinks_order_days',
+	ownerNotificationEmail: 'owner_notification_email'
+} as const;
+
 let db: Database.Database;
 
 export function getDb(): Database.Database {
@@ -47,11 +76,36 @@ function initSchema() {
 		'ALTER TABLE subscriptions ADD COLUMN last_fulfilled_at TEXT',
 		'ALTER TABLE products ADD COLUMN stock_quantity INTEGER DEFAULT NULL',
 		'ALTER TABLE subscriptions ADD COLUMN cancel_reason TEXT',
-		'ALTER TABLE orders ADD COLUMN tracking_number TEXT'
+		'ALTER TABLE orders ADD COLUMN tracking_number TEXT',
+		// --- Drink reservations ---
+		// time_slots gains a type so the morning pickup slots and the afternoon drink
+		// windows can coexist, and a drink capacity that is counted in DRINKS, not in
+		// reservation rows (one customer ordering four lattes consumes four).
+		"ALTER TABLE time_slots ADD COLUMN slot_type TEXT DEFAULT 'pickup'",
+		'ALTER TABLE time_slots ADD COLUMN capacity_drinks INTEGER DEFAULT NULL',
+		// reservations gains the payment link + fulfilment lifecycle. Reservations are
+		// created as 'pending' and only the Stripe webhook may promote them to
+		// 'confirmed' — see api/webhook/stripe.
+		'ALTER TABLE reservations ADD COLUMN stripe_session_id TEXT',
+		'ALTER TABLE reservations ADD COLUMN drink_count INTEGER DEFAULT 0',
+		'ALTER TABLE reservations ADD COLUMN total_cents INTEGER DEFAULT 0',
+		'ALTER TABLE reservations ADD COLUMN pickup_location TEXT',
+		'ALTER TABLE reservations ADD COLUMN picked_up_at DATETIME',
+		'ALTER TABLE reservations ADD COLUMN no_show INTEGER DEFAULT 0',
+		// Used by the pickup-day reminder job to guarantee at-most-once sending.
+		'ALTER TABLE reservations ADD COLUMN reminder_sent_at DATETIME'
 	];
 	for (const stmt of alterStatements) {
-		try { db.exec(stmt); } catch { /* column already exists */ }
+		try {
+			db.exec(stmt);
+		} catch {
+			/* column already exists */
+		}
 	}
+
+	// Indexes for the reservation lookups that run on every slot-availability call
+	// and on every Stripe webhook delivery.
+	db.exec(INDEXES);
 
 	// Seed if products table empty
 	const count = db.prepare('SELECT COUNT(*) as c FROM products').get() as { c: number };
@@ -67,20 +121,40 @@ function initSchema() {
 	// Seed default site settings (INSERT OR IGNORE = safe to re-run)
 	db.exec(SETTINGS_SEED);
 
+	// Seed the drink products. The SEED block above only fires on a brand new
+	// database, so this has to stand on its own and be re-runnable. Drinks ship
+	// INACTIVE — nothing is purchasable until the reservation flow exists and
+	// `drinks_enabled` is turned on.
+	db.exec(DRINKS_SEED);
+
 	// Update bakery product descriptions with ordering info
-	db.prepare(`UPDATE products SET description = ? WHERE name = 'Sourdough Loaf' AND description = 'Fresh-baked artisan sourdough'`)
-		.run('Fresh-baked artisan sourdough, made to order. Local delivery (Mon & Fri, 5:30 PM) or pickup (Mon & Fri, 4:00 PM). Tonkawa area only. Order at least 2 days in advance.');
-	db.prepare(`UPDATE products SET description = ? WHERE name = 'Banana Bread' AND description = 'Homemade, moist and delicious'`)
-		.run('Homemade, moist and delicious. Local delivery (Mon & Fri, 5:30 PM) or pickup (Mon & Fri, 4:00 PM). Tonkawa area only. Order at least 2 days in advance.');
-	db.prepare(`UPDATE products SET description = ? WHERE name = 'Cinnamon Roll' AND description = 'Warm with cream cheese icing'`)
-		.run('Warm with cream cheese icing. Local delivery (Mon & Fri, 5:30 PM) or pickup (Mon & Fri, 4:00 PM). Tonkawa area only. Order at least 2 days in advance.');
-	db.prepare(`UPDATE products SET description = ? WHERE name = 'Blueberry Muffin' AND description = 'Loaded with fresh blueberries'`)
-		.run('Loaded with fresh blueberries. Local delivery (Mon & Fri, 5:30 PM) or pickup (Mon & Fri, 4:00 PM). Tonkawa area only. Order at least 2 days in advance.');
+	db.prepare(
+		`UPDATE products SET description = ? WHERE name = 'Sourdough Loaf' AND description = 'Fresh-baked artisan sourdough'`
+	).run(
+		'Fresh-baked artisan sourdough, made to order. Local delivery (Mon & Fri, 5:30 PM) or pickup (Mon & Fri, 4:00 PM). Tonkawa area only. Order at least 2 days in advance.'
+	);
+	db.prepare(
+		`UPDATE products SET description = ? WHERE name = 'Banana Bread' AND description = 'Homemade, moist and delicious'`
+	).run(
+		'Homemade, moist and delicious. Local delivery (Mon & Fri, 5:30 PM) or pickup (Mon & Fri, 4:00 PM). Tonkawa area only. Order at least 2 days in advance.'
+	);
+	db.prepare(
+		`UPDATE products SET description = ? WHERE name = 'Cinnamon Roll' AND description = 'Warm with cream cheese icing'`
+	).run(
+		'Warm with cream cheese icing. Local delivery (Mon & Fri, 5:30 PM) or pickup (Mon & Fri, 4:00 PM). Tonkawa area only. Order at least 2 days in advance.'
+	);
+	db.prepare(
+		`UPDATE products SET description = ? WHERE name = 'Blueberry Muffin' AND description = 'Loaded with fresh blueberries'`
+	).run(
+		'Loaded with fresh blueberries. Local delivery (Mon & Fri, 5:30 PM) or pickup (Mon & Fri, 4:00 PM). Tonkawa area only. Order at least 2 days in advance.'
+	);
 }
 
 export function getSetting(key: string): string | null {
 	const db = getDb();
-	const row = db.prepare('SELECT value FROM site_settings WHERE key = ?').get(key) as { value: string } | undefined;
+	const row = db.prepare('SELECT value FROM site_settings WHERE key = ?').get(key) as
+		| { value: string }
+		| undefined;
 	return row?.value ?? null;
 }
 
@@ -91,7 +165,10 @@ export function setSetting(key: string, value: string): void {
 
 export function getAllSettings(): Record<string, string> {
 	const db = getDb();
-	const rows = db.prepare('SELECT key, value FROM site_settings').all() as { key: string; value: string }[];
+	const rows = db.prepare('SELECT key, value FROM site_settings').all() as {
+		key: string;
+		value: string;
+	}[];
 	const result: Record<string, string> = {};
 	for (const row of rows) result[row.key] = row.value;
 	return result;
@@ -129,6 +206,13 @@ CREATE TABLE IF NOT EXISTS reservations (
   customer_name TEXT,
   customer_email TEXT,
   status TEXT DEFAULT 'confirmed',
+  stripe_session_id TEXT,
+  drink_count INTEGER DEFAULT 0,
+  total_cents INTEGER DEFAULT 0,
+  pickup_location TEXT,
+  picked_up_at DATETIME,
+  no_show INTEGER DEFAULT 0,
+  reminder_sent_at DATETIME,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS time_slots (
@@ -137,7 +221,9 @@ CREATE TABLE IF NOT EXISTS time_slots (
   start_time TEXT NOT NULL,
   end_time TEXT NOT NULL,
   capacity INTEGER DEFAULT 5,
-  active INTEGER DEFAULT 1
+  active INTEGER DEFAULT 1,
+  slot_type TEXT DEFAULT 'pickup',
+  capacity_drinks INTEGER DEFAULT NULL
 );
 CREATE TABLE IF NOT EXISTS subscriptions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -210,4 +296,28 @@ INSERT OR IGNORE INTO site_settings (key, value) VALUES
 ('pickup_times', 'Monday 4:00 PM, Friday 4:00 PM'),
 ('delivery_times', 'Monday 5:30 PM, Friday 5:30 PM'),
 ('bread_lead_days', '2'),
-('bread_delivery_days', 'monday,friday');`;
+('bread_delivery_days', 'monday,friday'),
+('${SETTINGS.drinksEnabled}', '0'),
+('${SETTINGS.drinksDailyCap}', '${DRINKS_DEFAULT_DAILY_CAP}'),
+('${SETTINGS.drinksCutoffHour}', '${DRINKS_DEFAULT_CUTOFF_HOUR}'),
+('${SETTINGS.drinksPickupLocation}', ''),
+('${SETTINGS.drinksOrderDays}', 'monday,tuesday,wednesday,thursday,friday');`;
+
+const INDEXES = `
+CREATE INDEX IF NOT EXISTS idx_res_date_slot ON reservations(reservation_date, time_slot);
+CREATE INDEX IF NOT EXISTS idx_res_session ON reservations(stripe_session_id);
+CREATE INDEX IF NOT EXISTS idx_slots_type_day ON time_slots(slot_type, day_of_week, active);`;
+
+/**
+ * Idempotent drink seed. The SEED block only fires on an empty products table, and
+ * production already has products, so this stands alone and must be re-runnable.
+ * Both drinks are seeded INACTIVE: nothing can be ordered until the reservation
+ * flow is in place and `drinks_enabled` is switched on.
+ */
+const DRINKS_SEED = `
+INSERT INTO products (name, category, description, price_cents, active, image)
+SELECT 'Iced Coffee', '${DRINK_CATEGORY}', 'Cold brew over ice, made from beans we roasted this week. Reserve ahead for pickup.', 500, 0, 'coffee-bag.svg'
+WHERE NOT EXISTS (SELECT 1 FROM products WHERE name = 'Iced Coffee' AND category = '${DRINK_CATEGORY}');
+INSERT INTO products (name, category, description, price_cents, active, image)
+SELECT 'Iced Latte', '${DRINK_CATEGORY}', 'Espresso and cold milk over ice. Reserve ahead for pickup.', 600, 0, 'coffee-bag.svg'
+WHERE NOT EXISTS (SELECT 1 FROM products WHERE name = 'Iced Latte' AND category = '${DRINK_CATEGORY}');`;
