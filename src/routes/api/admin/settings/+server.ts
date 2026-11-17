@@ -18,7 +18,13 @@ export async function PUT({ request, cookies }) {
 		'pickup_times',
 		'delivery_times',
 		'bread_lead_days',
-		'bread_delivery_days'
+		'bread_delivery_days',
+		// Drink reservations. drinks_enabled is the master switch.
+		'drinks_enabled',
+		'drinks_daily_cap',
+		'drinks_cutoff_hour',
+		'drinks_pickup_location',
+		'drinks_order_days'
 	];
 
 	for (const [key, value] of Object.entries(settings)) {
