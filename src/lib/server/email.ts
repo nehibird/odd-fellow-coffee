@@ -439,6 +439,129 @@ ${btn(BRAND.siteUrl + '/admin/drinks', 'Run Sheet')}
 	});
 }
 
+export interface RunSheetSlot {
+	label: string;
+	confirmed_drinks: number;
+	tally: Record<string, number>;
+}
+
+/**
+ * Deborah's morning run sheet. The point is the batch numbers — how many of
+ * each drink, in which window — not a list of orders.
+ */
+export async function sendOwnerRunSheet(
+	ownerEmail: string,
+	date: string,
+	slots: RunSheetSlot[],
+	pickupLocation: string | null
+) {
+	const when = prettyDate(date);
+	const total = slots.reduce((sum, s) => sum + s.confirmed_drinks, 0);
+
+	const slotBlocks = slots
+		.map(
+			(s) =>
+				'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;background-color:' +
+				BRAND.lightBg +
+				';border-radius:8px;"><tr><td style="padding:16px;">' +
+				'<p style="margin:0 0 10px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:' +
+				BRAND.textMuted +
+				';">' +
+				esc(prettyWindow(s.label)) +
+				'</p>' +
+				(Object.keys(s.tally).length
+					? Object.entries(s.tally)
+							.map(
+								([n, q]) =>
+									'<p style="margin:0 0 4px;font-size:18px;color:' +
+									BRAND.dark +
+									';"><strong>' +
+									q +
+									'</strong> &times; ' +
+									esc(n) +
+									'</p>'
+							)
+							.join('')
+					: s.confirmed_drinks > 0
+						? // Paid drinks exist but their line items could not be read. Saying
+							// "nothing booked" would tell her to make nothing for a window that
+							// has orders in it.
+							'<p style="margin:0;font-size:18px;color:' +
+							BRAND.dark +
+							';"><strong>' +
+							s.confirmed_drinks +
+							'</strong> drinks (details unavailable)</p>'
+						: '<p style="margin:0;font-size:15px;color:' +
+							BRAND.textMuted +
+							';">Nothing booked.</p>') +
+				'</td></tr></table>'
+		)
+		.join('');
+
+	const html = emailShell(`
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Run Sheet</p>
+<h1 style="margin:0 0 8px;font-size:28px;color:${BRAND.dark};">${total} drink${total === 1 ? '' : 's'} today</h1>
+<p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};">${esc(when)}${pickupLocation ? ' &middot; ' + esc(pickupLocation) : ''}</p>
+
+${slotBlocks}
+
+<p style="font-size:14px;color:${BRAND.textMuted};line-height:1.6;">Paid orders only. Unpaid holds are not counted here — check the run sheet in the admin for those.</p>
+
+${divider()}
+
+<p style="text-align:center;margin:0;">
+${btn(BRAND.siteUrl + '/admin/drinks', 'Open the run sheet')}
+</p>
+`);
+
+	await transporter.sendMail({
+		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
+		to: ownerEmail,
+		subject: `${total} drink${total === 1 ? '' : 's'} to make today - ${when}`,
+		html
+	});
+}
+
+/** Pickup-day nudge, sent the morning of. */
+export async function sendPickupReminder(
+	email: string,
+	name: string,
+	details: ReservationEmailData
+) {
+	const pickupWindow = prettyWindow(details.timeSlot);
+	const locationLine = details.pickupLocation
+		? '<p style="margin:0 0 20px;font-size:16px;color:' +
+			BRAND.dark +
+			';">Pickup at <strong>' +
+			esc(details.pickupLocation) +
+			'</strong></p>'
+		: '';
+
+	const html = emailShell(`
+<p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Today</p>
+<h1 style="margin:0 0 24px;font-size:28px;color:${BRAND.dark};">Your drinks are ready at ${esc(pickupWindow)}</h1>
+
+<p style="margin:0 0 16px;font-size:16px;color:${BRAND.dark};">${esc(name || 'Hi there')} &mdash; here is what we are making for you:</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+${drinkRows(details.drinks)}
+</table>
+
+${locationLine}
+
+<p style="font-size:14px;color:${BRAND.textMuted};line-height:1.6;">Already paid for &mdash; just come and get it. Reply to this email if anything has changed.</p>
+`);
+
+	await transporter.sendMail({
+		from: `"Odd Fellow Coffee" <${FROM_EMAIL}>`,
+		replyTo: REPLY_TO,
+		to: email,
+		subject: `Ready today at ${pickupWindow} - Odd Fellow Coffee`,
+		html
+	});
+}
+
 export async function sendSubscriptionConfirmation(
 	email: string,
 	productName: string,

@@ -16,6 +16,8 @@ import {
 	getSlotAvailability,
 	holdCapacity,
 	releaseCapacity,
+	sweepStaleHolds,
+	DEFAULT_STALE_HOLD_MINUTES,
 	buildDrinkOrder,
 	attachSessionToReservation,
 	abandonHold,
@@ -821,5 +823,81 @@ describe('session attachment helpers', () => {
 	it('getReservationBySession returns null for empty or unknown ids', () => {
 		expect(getReservationBySession(db, '')).toBeNull();
 		expect(getReservationBySession(db, 'cs_nope')).toBeNull();
+	});
+});
+
+describe('sweepStaleHolds', () => {
+	const base = { date: FRI_CST, timeSlot: SLOT, email: 'a@b.com', name: 'A', totalCents: 1000 };
+
+	beforeEach(() => {
+		seedDrinkSlots(db, 12);
+	});
+
+	/** Backdate a row so it looks older than the sweep window. */
+	function age(id: number, minutes: number) {
+		db.prepare(`UPDATE reservations SET created_at = datetime('now', ?) WHERE id = ?`).run(
+			`-${minutes} minutes`,
+			id
+		);
+	}
+
+	it('releases an unpaid hold that has gone stale', () => {
+		const held = holdCapacity(db, { ...base, drinkCount: 5, sessionId: 'cs_stale' });
+		age(held.reservationId!, 90);
+		expect(getSlotAvailability(db, FRI_CST)[0].available_drinks).toBe(7);
+		expect(sweepStaleHolds(db, 45)).toBe(1);
+		expect(getSlotAvailability(db, FRI_CST)[0].available_drinks).toBe(12);
+	});
+
+	it('leaves a fresh hold alone — the customer may still be paying', () => {
+		holdCapacity(db, { ...base, drinkCount: 5, sessionId: 'cs_fresh' });
+		expect(sweepStaleHolds(db, 45)).toBe(0);
+		expect(getSlotAvailability(db, FRI_CST)[0].available_drinks).toBe(7);
+	});
+
+	it('NEVER touches a confirmed reservation, however old', () => {
+		const held = holdCapacity(db, { ...base, drinkCount: 5, sessionId: 'cs_paid' });
+		confirmReservation(db, 'cs_paid');
+		age(held.reservationId!, 60 * 24 * 30);
+		expect(sweepStaleHolds(db, 45)).toBe(0);
+		expect(
+			(
+				db.prepare('SELECT status FROM reservations WHERE id = ?').get(held.reservationId!) as {
+					status: string;
+				}
+			).status
+		).toBe('confirmed');
+	});
+
+	it('releases a hold that never got a Stripe session at all', () => {
+		// The gap the webhook cannot cover: session creation failed after the
+		// hold, so no checkout.session.expired will ever arrive.
+		const held = holdCapacity(db, { ...base, drinkCount: 4 });
+		expect(
+			db.prepare('SELECT stripe_session_id FROM reservations WHERE id = ?').get(held.reservationId!)
+		).toMatchObject({ stripe_session_id: null });
+		age(held.reservationId!, 90);
+		expect(sweepStaleHolds(db, 45)).toBe(1);
+		expect(getSlotAvailability(db, FRI_CST)[0].available_drinks).toBe(12);
+	});
+
+	it('is idempotent', () => {
+		const held = holdCapacity(db, { ...base, drinkCount: 3, sessionId: 'cs_twice' });
+		age(held.reservationId!, 90);
+		expect(sweepStaleHolds(db, 45)).toBe(1);
+		expect(sweepStaleHolds(db, 45)).toBe(0);
+	});
+
+	it.each([0, -5, 1.5, NaN])('falls back to the default window for %s', (bad) => {
+		const held = holdCapacity(db, { ...base, drinkCount: 2, sessionId: 'cs_bad' });
+		// Older than the default window, so the fallback must still release it.
+		age(held.reservationId!, DEFAULT_STALE_HOLD_MINUTES + 10);
+		expect(sweepStaleHolds(db, bad as number)).toBe(1);
+	});
+
+	it('does not release something younger than the default window', () => {
+		const held = holdCapacity(db, { ...base, drinkCount: 2, sessionId: 'cs_young' });
+		age(held.reservationId!, DEFAULT_STALE_HOLD_MINUTES - 10);
+		expect(sweepStaleHolds(db, 0)).toBe(0);
 	});
 });
