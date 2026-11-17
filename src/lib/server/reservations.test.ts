@@ -268,6 +268,22 @@ describe('getDrinkSlots', () => {
 		expect(getDrinkSlots(db, FRI_CST)).toHaveLength(0);
 	});
 
+	it('collapses duplicate windows to one, keeping the larger capacity', () => {
+		// Nothing in the schema prevents two slots with identical times. Two copies
+		// would otherwise render the window twice and each advertise its own
+		// capacity, while a single hold counts against both (they share the label).
+		seedDrinkSlots(db, 12);
+		db.prepare(
+			`INSERT INTO time_slots (day_of_week, start_time, end_time, capacity, active, slot_type, capacity_drinks)
+			 VALUES (5,'14:45','15:15',0,1,?,4)`
+		).run(DRINK_SLOT_TYPE);
+		const slots = getDrinkSlots(db, FRI_CST);
+		expect(slots).toHaveLength(1);
+		expect(slots[0].capacity_drinks).toBe(12);
+		expect(getSlotAvailability(db, FRI_CST)).toHaveLength(1);
+		expect(getSlotAvailability(db, FRI_CST)[0].available_drinks).toBe(12);
+	});
+
 	it('returns nothing for a malformed date instead of throwing', () => {
 		seedDrinkSlots(db, 12);
 		expect(getDrinkSlots(db, 'garbage')).toEqual([]);
