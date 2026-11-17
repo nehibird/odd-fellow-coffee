@@ -20,7 +20,7 @@ export async function createCheckoutSession(
 	items: LineItem[],
 	customerEmail: string | undefined,
 	returnUrl: string,
-	opts?: { collectShipping?: boolean; localOnly?: boolean }
+	opts?: { collectShipping?: boolean; localOnly?: boolean; shippingZip?: string }
 ) {
 	const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item) => ({
 		price_data: {
@@ -48,17 +48,11 @@ export async function createCheckoutSession(
 
 	if (opts?.collectShipping) {
 		sessionParams.shipping_address_collection = { allowed_countries: ['US'] };
-		// Placeholder shipping option — will be replaced dynamically via onShippingDetailsChange
-		sessionParams.shipping_options = [
-			{
-				shipping_rate_data: {
-					type: 'fixed_amount',
-					fixed_amount: { amount: 0, currency: 'usd' },
-					display_name: 'Calculated at next step'
-				}
-			}
-		];
-		(sessionParams as any).permissions = { update_shipping_details: 'server_only' };
+		// Shipping rates are resolved UP FRONT from the ZIP collected on the cart page.
+		// Stripe deprecated `permissions.update_shipping_details` for embedded Checkout
+		// (error: "use the Checkout Form Element"), so rates can no longer be patched in
+		// after the session exists. An unknown ZIP falls back to the flat shipping rate.
+		sessionParams.shipping_options = getShippingOptions(opts.shippingZip ?? '');
 	}
 
 	const session = await stripe.checkout.sessions.create(sessionParams);
@@ -94,8 +88,8 @@ export function getShippingOptions(zip: string): Stripe.Checkout.SessionCreatePa
 					fixed_amount: { amount: 0, currency: 'usd' },
 					display_name: 'Free Local Pickup (Mon & Fri, 4:00 PM)',
 					delivery_estimate: {
-						minimum: { unit: 'business_day', value: 0 },
-						maximum: { unit: 'business_day', value: 0 }
+						minimum: { unit: 'business_day', value: 1 },
+						maximum: { unit: 'business_day', value: 1 }
 					}
 				}
 			}
