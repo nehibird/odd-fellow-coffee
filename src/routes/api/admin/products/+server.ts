@@ -1,8 +1,13 @@
 import { json, error } from '@sveltejs/kit';
 import { isAuthenticated } from '$lib/server/auth';
-import { getDb } from '$lib/server/db';
+import { DRINK_CATEGORY, getDb } from '$lib/server/db';
 
-const VALID_CATEGORIES = new Set(['coffee', 'bakery']);
+// Must list every category actually present in the products table, or editing a
+// product of an unlisted category 400s. 'hotplate' was missing even though the
+// table has hotplate rows; 'drinks' is listed so a drink's category round-trips
+// rather than being rejected or rewritten. Keep in sync with
+// admin/routes/products.js, which is the editor that is actually deployed.
+const VALID_CATEGORIES = new Set(['coffee', 'bakery', 'hotplate', DRINK_CATEGORY]);
 const MAX_NAME_LENGTH = 100;
 const MAX_DESCRIPTION_LENGTH = 500;
 
@@ -58,10 +63,36 @@ export function GET({ cookies }) {
 	return json(products);
 }
 
+/**
+ * Whether a product is a made-to-order drink is not an editable field: the
+ * reservation system selects on `category = 'drinks'` and the storefront excludes
+ * it, so moving a product across that line in either direction silently breaks
+ * one of the two systems.
+ */
+function assertDrinkCategoryUnchanged(
+	db: ReturnType<typeof getDb>,
+	id: number,
+	submitted: string
+) {
+	const existing = db.prepare('SELECT category FROM products WHERE id = ?').get(id) as
+		| { category: string }
+		| undefined;
+	if (!existing) throw error(404, 'Product not found');
+	if ((existing.category === DRINK_CATEGORY) !== (submitted === DRINK_CATEGORY)) {
+		throw error(400, 'A product cannot be moved into or out of the drinks category.');
+	}
+}
+
 export async function POST({ request, cookies }) {
 	if (!isAuthenticated(cookies)) throw error(401, 'Unauthorized');
 	const body = await request.json();
 	const validated = validateProduct(body);
+	if (validated.category === DRINK_CATEGORY) {
+		throw error(
+			400,
+			'Drinks cannot be created here — they are seeded by the app and sold through reservations.'
+		);
+	}
 	const db = getDb();
 	const result = db.prepare(
 		'INSERT INTO products (name, category, description, price_cents, variants, subscribable, image) VALUES (?, ?, ?, ?, ?, ?, ?)'
@@ -74,6 +105,7 @@ export async function PUT({ request, cookies }) {
 	const body = await request.json();
 	const validated = validateProduct(body, true);
 	const db = getDb();
+	assertDrinkCategoryUnchanged(db, validated.id!, validated.category);
 	const stockQuantity = body.stock_quantity !== undefined ? (body.stock_quantity === null ? null : Number(body.stock_quantity)) : undefined;
 	db.prepare(
 		'UPDATE products SET name=?, category=?, description=?, price_cents=?, variants=?, subscribable=?, active=?, image=? WHERE id=?'

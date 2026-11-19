@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { isAuthenticated } from '$lib/server/auth';
 import { getDb } from '$lib/server/db';
+import { getShopProduct } from '$lib/server/products';
 import { isValidDropStatus } from '$lib/server/validation';
 
 export function GET({ cookies }) {
@@ -27,6 +28,19 @@ export async function POST({ request, cookies }) {
 		throw error(400, 'title, drop_date, opens_at, and items required');
 	}
 	const db = getDb();
+	// Validate every product BEFORE opening the transaction. A drop is a money
+	// path and drop_items carries a bare product_id, so this is the only place a
+	// drink can be stopped from entering one — checkout's drop branch can then
+	// only fail closed on it, which is a sold-out error the customer sees.
+	for (const item of items) {
+		if (!getShopProduct(db, Number(item.product_id))) {
+			throw error(
+				400,
+				`Product ${item.product_id} cannot be sold in a drop (unknown, inactive, or a reservation-only drink).`
+			);
+		}
+	}
+
 	const insert = db.transaction(() => {
 		const result = db
 			.prepare(

@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit';
-import { getDb } from '$lib/server/db';
+import { DRINK_CATEGORY, getDb } from '$lib/server/db';
+import { getShopProduct } from '$lib/server/products';
 import { createCheckoutSession } from '$lib/server/stripe';
 import { SITE_URL } from '$env/static/private';
 import { isValidEmail } from '$lib/server/validation';
@@ -166,12 +167,21 @@ export async function POST({ request }) {
 				if (result.changes === 0) {
 					throw new Error(`Item ${item.dropItemId} sold out`);
 				}
+				// Filters on category and active, not just the join: a drop is still a
+				// money path, and it resolves products through drop_items.product_id
+				// rather than through getShopProduct. A drink sold here would hold no
+				// capacity, write no reservation row and never reach the drink run
+				// sheet, so it must fail closed rather than fall through.
 				const di = db
 					.prepare(
 						`SELECT di.*, p.name, COALESCE(di.price_cents_override, p.price_cents) as price_cents
-					 FROM drop_items di JOIN products p ON p.id = di.product_id WHERE di.id = ?`
+					 FROM drop_items di JOIN products p ON p.id = di.product_id
+					 WHERE di.id = ? AND p.active = 1 AND p.category != ?`
 					)
-					.get(item.dropItemId) as any;
+					.get(item.dropItemId, DRINK_CATEGORY) as any;
+				if (!di) {
+					throw new Error(`Item ${item.dropItemId} is not available`);
+				}
 				lineItems.push({ name: di.name, price_cents: di.price_cents, quantity: item.quantity });
 			}
 			return lineItems;
@@ -216,9 +226,11 @@ export async function POST({ request }) {
 	let hasBakery = false;
 	const lineItems = items.map(
 		(item: { productId: number; quantity: number; variant?: string; price_cents?: number }) => {
-			const product = db
-				.prepare('SELECT * FROM products WHERE id = ? AND active = 1')
-				.get(item.productId) as any;
+			// getShopProduct, not a raw active=1 lookup: a drink must never resolve
+			// here. This is the physical-goods path — it collects shipping, holds no
+			// slot and writes no reservation, so a drink bought through it is a paid
+			// order nobody is ever told to make. The drink branch above owns drinks.
+			const product = getShopProduct(db, item.productId);
 			if (!product) throw error(400, `Product ${item.productId} not found`);
 			if (product.stock_quantity !== null && product.stock_quantity < item.quantity) {
 				throw error(409, `${product.name} is out of stock`);
