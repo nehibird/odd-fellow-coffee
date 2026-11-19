@@ -36,21 +36,22 @@ at the window), which means the permit is required before the first sale, not af
 
 ---
 
-## 2. Caleb — Stripe onboarding
+## 2. Caleb — Stripe onboarding ✅ DONE 2026-11-18
 
-### [ ] Complete Stripe account onboarding
+### [x] Complete Stripe account onboarding
 
-- EIN **42-4744593**
-- The LLC's business bank account
-
-**Only Caleb can do this** — it needs his identity details. Nothing in the drink flow can take
-real money until it is done.
+Verified against the Stripe API, not assumed: `acct_1SvmQ23AEscrllEA` now reports
+`charges_enabled: true`, `payouts_enabled: true`, `details_submitted: true`,
+`currently_due: none`. Earlier the same day all three were `false`.
 
 ### [ ] Confirm the payout account is the LLC's, not a personal one
 
+**Still worth one look.** Onboarding completing does not prove *which* bank account was
+attached. Check Stripe → Settings → Payouts shows the LLC's account, not a personal one.
+
 ---
 
-## 3. Deborah — one setting
+## 3. Deborah — one setting  ⬅️ **THE REMAINING BLOCKER**
 
 ### [ ] Set the drink pickup location
 
@@ -61,6 +62,33 @@ placeholder `123 Main St, Tonkawa, OK 74653`, and that string would be printed i
 customer confirmation email. Empty-and-must-be-set beats wrong-but-looks-set.
 
 Until it is set, customers are told the pickup spot will follow by email.
+
+---
+
+## 3b. The drinks-in-the-bean-shop leak ✅ FIXED 2026-11-18 (PRs #14, #15)
+
+**This had to land before section 4, and it has.** The script in section 4 activates the
+drink product rows, and until #14 that activation leaked drinks into the bean shop. Four
+places filtered on `active = 1` alone. The serious one: `POST /api/checkout` carrying a
+drink's `productId` and no `reservationData` took the money down the *physical-goods* path —
+collected shipping, held no slot, wrote no reservation. Paid for, nobody told to make it.
+
+Also fixed: a drink's category was silently editable. The deployed Express admin's category
+`<select>` had no drinks option, so opening the Iced Latte to set stock and clicking Save
+wrote `category='coffee'` — turning it into a shippable bean product *and* removing it from
+`/reservations`. Both admins now refuse to move a product into or out of `drinks`.
+
+Verified end-to-end on production in the exact state this section creates (Iced Latte
+temporarily set `active = 1`, then reverted):
+
+| Check | Result |
+|---|---|
+| `/api/products` lists an ACTIVE drink | ❌ no |
+| `/shop` names it | ❌ no |
+| **Buy an ACTIVE drink as a shippable item** | ✅ **400** |
+| Subscribe to an ACTIVE drink | ✅ **400** |
+
+So running section 4 is now safe. Nothing to do here.
 
 ---
 
@@ -101,36 +129,43 @@ bakery pickup slots — it reports those instead.
 
 ---
 
-## 5. Stripe — live keys
+## 5. Stripe — live keys ✅ DONE 2026-11-18/19
 
-### [ ] Swap the keys in `/opt/odd-fellow-coffee/.env`
+**All of this section is complete, and the bean store is already live on real cards.**
+Do not redo it.
 
-```
-STRIPE_SECRET_KEY=sk_live_...
-PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
-```
+| Step | State |
+|---|---|
+| Live `sk_` / `pk_` in `/opt/odd-fellow-coffee/.env` | ✅ |
+| Live webhook endpoint registered | ✅ `we_1UdM263AEscrllEAyXp74OFk`, `livemode: true`, `enabled` |
+| Live `whsec_` in `.env` | ✅ |
+| Container rebuilt | ✅ |
 
-### [ ] Re-register the webhook endpoint in LIVE mode
+Events on the endpoint: `checkout.session.completed`, `checkout.session.expired`.
 
-`https://oddfellowcoffee.com/api/webhook/stripe` — events `checkout.session.completed`,
-`checkout.session.expired`, plus the subscription events already in use.
+### The silent-failure warning this section used to carry — discharged
 
-### [ ] Put the **live** signing secret in `.env`
+It warned that a *test* signing secret will not validate live events: payments succeed,
+`constructEvent` throws, the webhook 400s, and reservations never reach `confirmed`. That
+was checked directly rather than left to the first real customer:
 
-```
-STRIPE_WEBHOOK_SECRET=whsec_...   # the LIVE one, not the test one
-```
+- a request signed with the **real live `whsec_`** → **200**
+- a request with a bad signature → **400**
+- `POST /api/checkout` returns a **`cs_live_…`** client secret
 
-> ⚠️ **This is the step most likely to be fumbled, and it fails silently.** A test signing
-> secret will not validate live events: payments succeed, `constructEvent` throws, the webhook
-> 400s, and **reservations never reach `confirmed`** — so customers pay and no one is told.
-> After the first live payment, check the Stripe dashboard's webhook log shows a 200.
+**Technique, if this ever needs re-checking:** send a *correctly signed* event of a type the
+handler ignores (e.g. `payment_intent.created`). It falls through to
+`return json({ received: true })` → 200, proving signature verification without mutating a
+single row.
 
-### [ ] Rebuild so the new keys are picked up
+### [ ] Rotate the `sk_live`
 
-```bash
-docker compose up -d --build web
-```
+It was pasted over chat and is sitting in a session transcript. Rotate it in the Stripe
+dashboard, put the new value in `.env`, and **rebuild** (`$env/static/private` inlines at
+build time — a restart does nothing). Cheap, and it closes the exposure.
+
+> ⚠️ **`$env/static/private` is inlined at BUILD time.** Editing `.env` and restarting does
+> nothing. Any key change needs `docker compose up -d --build web`.
 
 ---
 
