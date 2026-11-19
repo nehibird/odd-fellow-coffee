@@ -167,16 +167,23 @@ export async function POST({ request }) {
 				if (result.changes === 0) {
 					throw new Error(`Item ${item.dropItemId} sold out`);
 				}
-				// Filters on category and active, not just the join: a drop is still a
-				// money path, and it resolves products through drop_items.product_id
-				// rather than through getShopProduct. A drink sold here would hold no
+				// Excludes drinks, but deliberately NOT inactive products. A drop is a
+				// money path that resolves products through drop_items.product_id
+				// rather than getShopProduct, and a drink sold here would hold no
 				// capacity, write no reservation row and never reach the drink run
-				// sheet, so it must fail closed rather than fall through.
+				// sheet — so a drink must fail closed.
+				//
+				// `active` is a different thing: it controls shop visibility, and a
+				// drop is a separate curated channel. GET /api/drops joins without an
+				// active filter on purpose, so drop-only items are stocked as
+				// active = 0 to keep them out of the bean shop while still selling
+				// through the drop. Filtering on it here would display an item and
+				// then refuse it at checkout.
 				const di = db
 					.prepare(
 						`SELECT di.*, p.name, COALESCE(di.price_cents_override, p.price_cents) as price_cents
 					 FROM drop_items di JOIN products p ON p.id = di.product_id
-					 WHERE di.id = ? AND p.active = 1 AND p.category != ?`
+					 WHERE di.id = ? AND p.category != ?`
 					)
 					.get(item.dropItemId, DRINK_CATEGORY) as any;
 				if (!di) {
