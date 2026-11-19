@@ -21,7 +21,12 @@ router.get('/', (req, res) => {
 
 router.get('/new', (req, res) => {
   const db = getDb();
-  const products = db.prepare('SELECT id, name, price_cents FROM products WHERE active = 1 ORDER BY name').all();
+  // Drinks are reservation-only (see src/lib/server/products.ts). Offering one
+  // here would let an admin put an Iced Latte in a drop, which sells it with no
+  // capacity hold, no reservation row and no line on the drink run sheet.
+  const products = db
+    .prepare("SELECT id, name, price_cents FROM products WHERE active = 1 AND category != 'drinks' ORDER BY name")
+    .all();
   res.render('drops/new', { title: 'New Drop', products });
 });
 

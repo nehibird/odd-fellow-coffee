@@ -53,8 +53,17 @@ export function listProductsInCategory(db: Database.Database, category: string):
  * One product a customer is allowed to put in the shop cart. Returns undefined
  * for an unknown id, an inactive product, or a drink — see `listShopProducts`
  * for why a drink must never resolve on the physical-goods checkout path.
+ *
+ * The `Number.isInteger` guard is not decoration: `productId` comes straight off
+ * a JSON body, and better-sqlite3 reads an object or an array in that position as
+ * a named-parameter container rather than a scalar, so it throws "Too few
+ * parameter values were provided" (verified against the pinned version — a string
+ * or a float binds harmlessly and simply matches no row). That throw escapes as a
+ * 500 with a stack trace rather than the 400 the caller means to send. Guarding
+ * here covers every caller at once.
  */
 export function getShopProduct(db: Database.Database, id: number): ProductRow | undefined {
+	if (!Number.isInteger(id)) return undefined;
 	return db
 		.prepare('SELECT * FROM products WHERE id = ? AND active = 1 AND category != ?')
 		.get(id, DRINK_CATEGORY) as ProductRow | undefined;
@@ -68,6 +77,7 @@ export function getShopProduct(db: Database.Database, id: number): ProductRow | 
  * one checkbox in the admin product editor would undo that.
  */
 export function getSubscribableProduct(db: Database.Database, id: number): ProductRow | undefined {
+	if (!Number.isInteger(id)) return undefined;
 	return db
 		.prepare(
 			'SELECT * FROM products WHERE id = ? AND active = 1 AND subscribable = 1 AND category != ?'

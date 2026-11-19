@@ -21,7 +21,16 @@
           <option value="coffee" <%= product && product.category === 'coffee' ? 'selected' : '' %>>Coffee</option>
           <option value="bakery" <%= product && product.category === 'bakery' ? 'selected' : '' %>>Bakery</option>
           <option value="hotplate" <%= product && product.category === 'hotplate' ? 'selected' : '' %>>Hot Plate</option>
+          <%# Present so that editing a drink round-trips its category. Without it no
+              option was selected for a drink row, the browser fell back to Coffee, and
+              Save silently turned the drink into a shippable bean product. The server
+              refuses to move a product into or out of this category either way. %>
+          <option value="drinks" <%= product && product.category === 'drinks' ? 'selected' : '' %>
+                  <%= product && product.category === 'drinks' ? '' : 'disabled' %>>Drinks (reservation-only)</option>
         </select>
+        <% if (product && product.category === 'drinks') { %>
+          <div class="form-text">Drinks are sold through reservations. This category cannot be changed.</div>
+        <% } %>
       </div>
 
       <div class="mb-3">

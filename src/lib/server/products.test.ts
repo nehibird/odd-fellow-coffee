@@ -134,3 +134,24 @@ describe('getSubscribableProduct', () => {
 		expect(getSubscribableProduct(db, retiredBeanId)).toBeUndefined();
 	});
 });
+
+describe('non-integer ids (review finding 4)', () => {
+	// productId comes straight off a JSON body. An object or an array in a bind
+	// position is read by better-sqlite3 as a named-parameter container, so it
+	// throws "Too few parameter values were provided" — which escapes as a 500
+	// with a stack trace rather than the intended 400. (A string or a float binds
+	// harmlessly and matches no row; they are covered here to pin that down.)
+	const hostile = [{}, [], 'abc', 1.5, NaN, Infinity, null, undefined];
+
+	for (const bad of hostile) {
+		it(`getShopProduct returns undefined for ${JSON.stringify(bad) ?? String(bad)}`, () => {
+			expect(() => getShopProduct(db, bad as unknown as number)).not.toThrow();
+			expect(getShopProduct(db, bad as unknown as number)).toBeUndefined();
+		});
+
+		it(`getSubscribableProduct returns undefined for ${JSON.stringify(bad) ?? String(bad)}`, () => {
+			expect(() => getSubscribableProduct(db, bad as unknown as number)).not.toThrow();
+			expect(getSubscribableProduct(db, bad as unknown as number)).toBeUndefined();
+		});
+	}
+});
