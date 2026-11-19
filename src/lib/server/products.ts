@@ -84,3 +84,25 @@ export function getSubscribableProduct(db: Database.Database, id: number): Produ
 		)
 		.get(id, DRINK_CATEGORY) as ProductRow | undefined;
 }
+
+/**
+ * One product an admin is allowed to put in a drop. Requires that the product
+ * exists and is not a drink, and deliberately does NOT require `active = 1`.
+ *
+ * A drop is a curated channel separate from the bean shop: `GET /api/drops`
+ * joins products without an active filter on purpose, so a drop-only item is
+ * stocked as `active = 0` to keep it out of the shop while still selling through
+ * the drop. Requiring `active` here would reject exactly those items.
+ *
+ * Drinks are still refused: they need a capacity hold and a reservation row, and
+ * a drop gives them neither.
+ */
+export function getDroppableProduct(
+	db: Database.Database,
+	id: number
+): ProductRow | undefined {
+	if (!Number.isInteger(id)) return undefined;
+	return db
+		.prepare('SELECT * FROM products WHERE id = ? AND category != ?')
+		.get(id, DRINK_CATEGORY) as ProductRow | undefined;
+}

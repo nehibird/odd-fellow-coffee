@@ -8,7 +8,8 @@ import {
 	listShopProducts,
 	listProductsInCategory,
 	getShopProduct,
-	getSubscribableProduct
+	getSubscribableProduct,
+	getDroppableProduct
 } from './products';
 
 let dir: string;
@@ -154,4 +155,30 @@ describe('non-integer ids (review finding 4)', () => {
 			expect(getSubscribableProduct(db, bad as unknown as number)).toBeUndefined();
 		});
 	}
+});
+
+describe('getDroppableProduct', () => {
+	it('allows an active non-drink product', () => {
+		expect(getDroppableProduct(db, beanId)?.name).toBe('Ethiopia Natural');
+	});
+
+	it('ALLOWS an inactive product — drop-only items are deliberately inactive', () => {
+		// A drop is a curated channel separate from the bean shop: GET /api/drops
+		// joins without an active filter on purpose, so an item meant to sell only
+		// through a drop is stocked as active = 0 to keep it out of /shop. Rejecting
+		// those here (or in checkout) would display a drop item and then refuse it.
+		expect(getDroppableProduct(db, retiredBeanId)?.name).toBe('Last Season Blend');
+	});
+
+	it('refuses a drink, active or not', () => {
+		// A drop gives a drink no capacity hold, no reservation row and no line on
+		// the run sheet, so it must never enter one.
+		expect(getDroppableProduct(db, icedLatteId)).toBeUndefined();
+		expect(getDroppableProduct(db, retiredDrinkId)).toBeUndefined();
+	});
+
+	it('refuses an unknown id and a non-integer id', () => {
+		expect(getDroppableProduct(db, 999999)).toBeUndefined();
+		expect(getDroppableProduct(db, {} as unknown as number)).toBeUndefined();
+	});
 });
