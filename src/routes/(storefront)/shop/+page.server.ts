@@ -1,7 +1,9 @@
 import { getDb } from '$lib/server/db';
+import { listShopProducts } from '$lib/server/products';
 
 export function load() {
 	const db = getDb();
-	const products = db.prepare('SELECT * FROM products WHERE active = 1').all();
+	// Drinks are reservation-only — see listShopProducts.
+	const products = listShopProducts(db);
 	return { products };
 }

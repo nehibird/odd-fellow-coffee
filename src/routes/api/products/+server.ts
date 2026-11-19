@@ -1,13 +1,14 @@
 import { json } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
+import { listProductsInCategory, listShopProducts } from '$lib/server/products';
 
 export function GET({ url }) {
 	const db = getDb();
 	const category = url.searchParams.get('category');
 	if (category) {
-		const products = db.prepare('SELECT * FROM products WHERE active = 1 AND category = ?').all(category);
-		return json(products);
+		return json(listProductsInCategory(db, category));
 	}
-	const products = db.prepare('SELECT * FROM products WHERE active = 1').all();
-	return json(products);
+	// The unfiltered listing is the shop catalogue, so it excludes drinks — see
+	// listShopProducts. Callers that want drinks ask for them by category.
+	return json(listShopProducts(db));
 }

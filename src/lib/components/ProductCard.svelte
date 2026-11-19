@@ -8,7 +8,8 @@
 		id: number;
 		name: string;
 		category: string;
-		description: string;
+		// Nullable in the schema, so the card must not render the word "null".
+		description: string | null;
 		price_cents: number;
 		variants: string | null;
 		subscribable?: number;
@@ -143,7 +144,9 @@
 	</div>
 	<span class="text-xs font-medium uppercase tracking-wider text-medium-carmine">{product.category}</span>
 	<h3 class="mt-1 text-lg font-semibold">{product.name}</h3>
-	<p class="mt-1 text-sm text-gray-600">{product.description}</p>
+	{#if product.description}
+		<p class="mt-1 text-sm text-gray-600">{product.description}</p>
+	{/if}
 	<p class="mt-2 text-xl font-bold">${(currentPrice / 100).toFixed(2)}</p>
 
 	{#if variants?.sizes}

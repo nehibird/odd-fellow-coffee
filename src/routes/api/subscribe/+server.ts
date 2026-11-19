@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
+import { getSubscribableProduct } from '$lib/server/products';
 import { createSubscriptionCheckout, LOCAL_ZIP } from '$lib/server/stripe';
 import { SITE_URL } from '$env/static/private';
 import { isValidEmail, isValidFrequency } from '$lib/server/validation';
@@ -13,7 +14,8 @@ export async function POST({ request }) {
 	if (!isValidFrequency(frequency)) throw error(400, 'Invalid frequency');
 
 	const db = getDb();
-	const product = db.prepare('SELECT * FROM products WHERE id = ? AND active = 1 AND subscribable = 1').get(productId) as any;
+	// See getSubscribableProduct: a drink must not be subscribable.
+	const product = getSubscribableProduct(db, productId);
 	if (!product) throw error(400, 'Product not found or not subscribable');
 
 	// Subscription discount rate (10% off)

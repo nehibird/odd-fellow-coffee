@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
+import { getShopProduct } from '$lib/server/products';
 import { createCheckoutSession } from '$lib/server/stripe';
 import { SITE_URL } from '$env/static/private';
 import { isValidEmail } from '$lib/server/validation';
@@ -216,9 +217,11 @@ export async function POST({ request }) {
 	let hasBakery = false;
 	const lineItems = items.map(
 		(item: { productId: number; quantity: number; variant?: string; price_cents?: number }) => {
-			const product = db
-				.prepare('SELECT * FROM products WHERE id = ? AND active = 1')
-				.get(item.productId) as any;
+			// getShopProduct, not a raw active=1 lookup: a drink must never resolve
+			// here. This is the physical-goods path — it collects shipping, holds no
+			// slot and writes no reservation, so a drink bought through it is a paid
+			// order nobody is ever told to make. The drink branch above owns drinks.
+			const product = getShopProduct(db, item.productId);
 			if (!product) throw error(400, `Product ${item.productId} not found`);
 			if (product.stock_quantity !== null && product.stock_quantity < item.quantity) {
 				throw error(409, `${product.name} is out of stock`);
