@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { stripe } from '$lib/server/stripe';
 import { STRIPE_WEBHOOK_SECRET } from '$env/static/private';
-import { getDb } from '$lib/server/db';
+import { getDb, getSettingOn, SETTINGS } from '$lib/server/db';
 import {
 	sendOrderConfirmation,
 	sendOwnerOrderNotification,
@@ -346,6 +346,8 @@ export async function POST({ request }) {
 					totalCents: order.total_cents,
 					shippingMethod: (shippingCost?.shipping_rate as any)?.display_name,
 					shippingCents: shippingCost?.amount_total || 0,
+					// Read per-order: the owner can correct it in admin settings with no deploy.
+					pickupAddress: getSettingOn(db, SETTINGS.pickupAddress) || undefined,
 					shippingAddress: shipping?.address
 						? {
 								line1: shipping.address.line1,

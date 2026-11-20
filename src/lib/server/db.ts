@@ -31,6 +31,7 @@ export const SETTINGS = {
 	drinksCutoffHour: 'drinks_cutoff_hour',
 	drinksPickupLocation: 'drinks_pickup_location',
 	drinksOrderDays: 'drinks_order_days',
+	pickupAddress: 'pickup_address',
 	ownerNotificationEmail: 'owner_notification_email'
 } as const;
 
