@@ -115,6 +115,8 @@ interface OrderData {
 	totalCents: number;
 	shippingMethod?: string;
 	shippingCents?: number;
+	/** Where a local-pickup order is collected. Omitted when unset. */
+	pickupAddress?: string;
 	shippingAddress?: {
 		line1: string;
 		line2?: string;
@@ -181,7 +183,7 @@ ${esc(address.city)}, ${esc(address.state)} ${esc(address.postal_code)}
 
 // ─── Estimated Arrival ──────────────────────────────────────────
 
-function estimatedArrivalBlock(shippingMethod?: string): string {
+function estimatedArrivalBlock(shippingMethod?: string, pickupAddress?: string): string {
 	const isPickup = shippingMethod?.toLowerCase().includes('pickup');
 	const isLocal = shippingMethod?.toLowerCase().includes('local') && !isPickup;
 
@@ -192,7 +194,13 @@ function estimatedArrivalBlock(shippingMethod?: string): string {
 <p style="margin:0 0 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:${BRAND.textMuted};">Pickup Instructions</p>
 <p style="margin:0 0 4px;font-size:18px;font-weight:700;color:${BRAND.dark};">Ready for pickup</p>
 <p style="margin:0 0 8px;font-size:13px;color:${BRAND.textMuted};">Available Monday & Friday at 4:00 PM</p>
-<p style="margin:0;font-size:13px;color:${BRAND.textMuted};">Pickup address will be provided separately. Reply to this email if you need directions.</p>
+${
+	pickupAddress
+		? `<p style="margin:0;font-size:14px;color:${BRAND.dark};">${esc(pickupAddress)}</p>`
+		: // No address configured yet. Promising one "separately" is a manual
+			// follow-up for the owner, but it beats printing an empty box.
+			`<p style="margin:0;font-size:13px;color:${BRAND.textMuted};">Pickup address will be provided separately. Reply to this email if you need directions.</p>`
+}
 </td></tr>
 </table>`;
 	}
@@ -226,7 +234,7 @@ export async function sendOrderConfirmation(email: string, name: string, order: 
 <h1 style="margin:0 0 8px;font-size:28px;color:${BRAND.dark};">Thanks, ${esc(name)}!</h1>
 <p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};">Your order <strong style="color:${BRAND.dark};">#${order.id}</strong> has been received and is being prepared.</p>
 
-${estimatedArrivalBlock(order.shippingMethod)}
+${estimatedArrivalBlock(order.shippingMethod, order.pickupAddress)}
 
 ${divider()}
 
